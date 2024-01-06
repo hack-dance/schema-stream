@@ -65,8 +65,8 @@ A lot of the internal parser logic was forked from [streamparser-json](https://g
 
 ## Related Packages
 
-- [@hackdance/hooks](https://github.com/hack-dance/agents/packages/hooks): A set of React hooks for working with streams, including a `use-json-stream` hook that uses `schema-stream`.
-- [@hackdance/agents](https://github.com/hack-dance/agents/packages/agents): Another set of React hooks for stream data handling.
+- [@hackdance/hooks](https://github.com/hack-dance/agents/tree/main/packages/hooks): A set of React hooks for working with streams, including a `use-json-stream` hook that uses `schema-stream`.
+- [@hackdance/agents](https://github.com/hack-dance/agents/tree/main/packages/core): Another set of React hooks for stream data handling.
 
 ## Contributing
 
