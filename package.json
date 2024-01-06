@@ -8,6 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:write": "prettier --write \"**/*.{js,json,jsx,ts,tsx}\"",
     "start": "turbo next start",
+    "clean": "turbo clean",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "publish-packages": "turbo run build --filter='schema-stream' && changeset publish"
