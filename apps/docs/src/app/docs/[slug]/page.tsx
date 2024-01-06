@@ -52,7 +52,7 @@ export default async function PostPage({
           <h1 className="text-3xl font-blunt tracking-tight">{post.title}</h1>
           <p>{post.description}</p>
 
-          <small className="text-xs mt-4 block py-4 border-y">Published on {post.date}</small>
+          <small className="text-xs mt-4 block py-4 border-y">Last updated: {post.date}</small>
         </header>
 
         <div className="w-full prose dark:prose-invert max-w-full">

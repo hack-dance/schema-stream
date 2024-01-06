@@ -1,0 +1,51 @@
+---
+title: Usage
+description: How to use schema-stream
+slug: usage
+date: January 1, 2024
+published: true
+---
+
+
+```typescript
+import { SchemaStream } from 'schema-stream'
+```
+
+You first need to create a new instance of the class, passing in a Zod schema and optional default data. Then, you can call the `parse` method on the instance to parse a JSON stream.
+
+```typescript
+
+const schema = z.object({
+  someString: z.string(),
+  someNumber: z.number()
+})
+
+const response = await getSomeStreamOfJson()
+
+const parser = new SchemaStream(schema, {
+  someString: "default string"
+})
+
+const streamParser = parser.parse({
+  stringStreaming: true
+})
+
+response.body?.pipeThrough(parser)
+
+const reader = streamParser.readable.getReader()
+const decoder = new TextDecoder()
+let result = {}
+
+while (!done) {
+  const { value, done: doneReading } = await reader.read()
+  done = doneReading
+
+  if (done) {
+    console.log(result)
+    break
+  }
+
+  const chunkValue = decoder.decode(value)
+  result = JSON.parse(chunkValue)
+}
+```

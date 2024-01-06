@@ -80,7 +80,10 @@ export const customComponents = {
   ),
   code: ({ className, ...props }: React.HTMLAttributes<HTMLElement>) => (
     <code
-      className={cn("relative rounded text-background font-mono text-sm", className)}
+      className={cn(
+        "relative rounded font-monoBold text-sm before:text-transparent after:text-transparent",
+        className
+      )}
       {...props}
     />
   ),

@@ -5,8 +5,9 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "types": ["bun-types"]
   },
-  "include": ["src", "turbo", "tsup.config.ts"],
+  "include": ["src", "turbo", "tsup.config.ts", "tests"],
   "exclude": ["node_modules", "dist"]
 }

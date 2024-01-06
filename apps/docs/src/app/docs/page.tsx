@@ -8,26 +8,29 @@ export default async function Page() {
 
   return (
     <div className="w-full h-full">
-      <ScrollArea className="flex-1 h-[calc(100dvh-64px)] w-full">
-        <div className="container p-6">
-          <ul className="w-full">
+      <div className="flex items-start flex-1 h-[calc(100dvh-64px)]">
+        <aside className="border-r bg-background h-full">
+          <ul className="">
             {posts.map(post => (
               <li
                 key={post?.slug}
                 className="border-b last:border-none p-4 bg-background hover:bg-accent/50 transition-all duration-200 cursor-pointer"
               >
-                <Link href={`/thoughts/${post?.slug}`}>
+                <Link href={`/docs/${post?.slug}`}>
                   <>
-                    <h3 className="text-3xl font-blunt tracking-tight">{post?.title}</h3>
-                    <p className="leading-7">{post?.description}</p>
-                    <small>Published on {post?.date}</small>
+                    <h3 className="text-sm font-okineMedium uppercase tracking-tight">
+                      {post?.title}
+                    </h3>
                   </>
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
-      </ScrollArea>
+        </aside>
+        <ScrollArea className="flex-1 h-[calc(100dvh-64px)] w-full">
+          <main className="flex-1 h-full w-full"></main>
+        </ScrollArea>
+      </div>
     </div>
   )
 }

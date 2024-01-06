@@ -1,0 +1,75 @@
+---
+title: API
+description: API Reference
+slug: api
+date: January 1, 2024
+published: true
+---
+
+## SchemaStream Class
+
+### Constructor
+
+```typescript
+constructor(
+  schema: SchemaType,
+  opts: {
+    defaultData?: NestedObject | null,
+    typeDefaults?: TypeDefaults,
+    onKeyComplete?: (data: { activeKey: string, completedKeys: string[] }) => void
+  } = {}
+)
+```
+
+Initializes an instance of `SchemaStream` with a Zod schema and optional configurations.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `schema` | `SchemaType` | The Zod schema for validation. |
+| `opts` | `Object` | Optional configurations for the schema stream. |
+| `opts.defaultData` | `NestedObject \| null` | Default data values. |
+| `opts.typeDefaults` | `TypeDefaults` | Default values for basic types. |
+| `opts.onKeyComplete` | `Function` | Callback invoked when a key parsing is completed. |
+
+### Methods
+
+#### parse
+
+```typescript
+parse(
+  opts: {
+    stringStreaming?: boolean,
+    stringBufferSize?: number,
+    handleUnescapedNewLines?: boolean
+  } = {}
+): TransformStream
+```
+
+Configures and returns a `TransformStream` for processing the JSON data.
+
+| Parameter | Type | Description | Default |
+| --- | --- | --- | --- |
+| `opts` | `Object` | Configuration options for the parse method. | `{}` |
+| `opts.stringBufferSize` | `number` | Buffer size for string streaming. | `0` |
+| `opts.handleUnescapedNewLines` | `boolean` | Handle unescaped new lines in JSON stream. | `true` |
+
+### Example Usage
+
+```typescript
+// Using the constructor
+const schema = z.object({ ... });
+const parser = new SchemaStream(schema, {
+  defaultData: { key: 'value' },
+  onKeyComplete: ({ activeKey, completedKeys }) => {
+    console.log(`Active key: ${activeKey}, Completed keys: ${completedKeys}`);
+  }
+});
+
+// Using the parse method
+const transformStream = parser.parse({
+  stringStreaming: true,
+  stringBufferSize: 1024,
+  handleUnescapedNewLines: false
+});
+// Further usage...
+```

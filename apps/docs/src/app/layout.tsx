@@ -5,6 +5,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Box, Github, Twitter } from "lucide-react"
 
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
@@ -91,6 +92,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
                   <div className="gap-4 items-center flex">
                     <div className="ml-[-2px] mt-[4px] flex items-center gap-6">
+                      <Link
+                        href="https://github.com/hack-dance/agents/tree/main/packages/core"
+                        target="_blank"
+                        className="text-foreground/50 hover:text-foreground"
+                      >
+                        <Github className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href="https://www.npmjs.com/package/@hackdance/agents"
+                        target="_blank"
+                        className="text-foreground/50 hover:text-foreground"
+                      >
+                        <Box className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href="https://twitter.com/dimitrikennedy"
+                        target="_blank"
+                        className="text-foreground/50 hover:text-foreground"
+                      >
+                        <Twitter className="w-4 h-4" />
+                      </Link>
+                      <small>|</small>
                       <ModeToggle />
                     </div>
                   </div>

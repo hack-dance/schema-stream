@@ -7,11 +7,11 @@ export const siteConfig = {
   links: {},
   mainNav: [
     {
-      label: "blog",
-      url: "/blog"
+      label: "docs",
+      url: "/docs"
     },
     {
-      label: "GH",
+      label: "hack dance",
       url: "https://hack.dance",
       external: true
     }
