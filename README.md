@@ -5,6 +5,13 @@
 
 `schema-stream` is a utility for parsing streams of JSON data. It provides a safe-to-read-from stubbed version of the data before the stream has fully completed. This utility is essential for handling large JSON streams efficiently and is built on top of Zod schema validation.
 
+## Features
+
+- Stream JSON data parsing with partial data availability.
+- Zod schema validation for robust data handling.
+- Extensible configuration for customized parsing needs.
+
+
 ## Installation
 
 ```bash
@@ -52,11 +59,6 @@ while (!done) {
 }
 ```
 
-## Features
-
-- Stream JSON data parsing with partial data availability.
-- Zod schema validation for robust data handling.
-- Extensible configuration for customized parsing needs.
 
 ## Note
 
