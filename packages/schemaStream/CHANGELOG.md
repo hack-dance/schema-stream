@@ -1,5 +1,11 @@
 # schema-stream
 
+## 1.6.0
+
+### Minor Changes
+
+- [`d6c6fa587267807f60123fbafc35db036aabf037`](https://github.com/hack-dance/schema-stream/commit/d6c6fa587267807f60123fbafc35db036aabf037) Thanks [@roodboi](https://github.com/roodboi)! - fixing build
+
 ## 1.5.0
 
 ### Minor Changes
