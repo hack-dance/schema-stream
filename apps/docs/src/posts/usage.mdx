@@ -26,9 +26,7 @@ const parser = new SchemaStream(schema, {
   someString: "default string"
 })
 
-const streamParser = parser.parse({
-  stringStreaming: true
-})
+const streamParser = parser.parse()
 
 response.body?.pipeThrough(parser)
 

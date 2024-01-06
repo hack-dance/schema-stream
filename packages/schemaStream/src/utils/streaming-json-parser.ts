@@ -57,7 +57,6 @@ type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValu
 
 export class SchemaStream {
   private schemaInstance: NestedObject
-  private stringStreaming: boolean
   private activeKey: string | undefined
   private completedKeys: string[] = []
   private onKeyComplete?: (data) => void | undefined
@@ -77,7 +76,6 @@ export class SchemaStream {
   ) {
     const { defaultData, onKeyComplete, typeDefaults } = opts
 
-    this.stringStreaming = true
     this.schemaInstance = this.createBlankObject(schema, defaultData, typeDefaults)
     this.onKeyComplete = onKeyComplete
   }
@@ -180,18 +178,14 @@ export class SchemaStream {
    * Parses the JSON stream.
    *
    * @param {Object} opts - The options for parsing the JSON stream.
-   * @param {boolean} [opts.stringStreaming=true] - Whether to enable streaming of partial strings. If this is true, chunks of a string value will be added to the stubbed version of the data as soon as they are parsed.
    * @returns A `TransformStream` that can be used to process the JSON data.
    */
   public parse(
     opts: {
-      stringStreaming?: boolean
       stringBufferSize?: number
       handleUnescapedNewLines?: boolean
-    } = { stringStreaming: true, stringBufferSize: 0, handleUnescapedNewLines: true }
+    } = { stringBufferSize: 0, handleUnescapedNewLines: true }
   ) {
-    this.stringStreaming = opts.stringStreaming ?? this.stringStreaming
-
     const textEncoder = new TextEncoder()
     const parser = new JSONParser({
       stringBufferSize: opts.stringBufferSize ?? 0,

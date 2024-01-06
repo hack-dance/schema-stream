@@ -1,4 +1,4 @@
-name: test-wf
+name: test
 on: [push]
 
 jobs:

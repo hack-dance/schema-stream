@@ -38,7 +38,6 @@ Initializes an instance of `SchemaStream` with a Zod schema and optional configu
 ```typescript
 parse(
   opts: {
-    stringStreaming?: boolean,
     stringBufferSize?: number,
     handleUnescapedNewLines?: boolean
   } = {}
@@ -67,7 +66,6 @@ const parser = new SchemaStream(schema, {
 
 // Using the parse method
 const transformStream = parser.parse({
-  stringStreaming: true,
   stringBufferSize: 1024,
   handleUnescapedNewLines: false
 });
