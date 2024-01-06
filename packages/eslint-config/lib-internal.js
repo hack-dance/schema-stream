@@ -14,6 +14,7 @@ module.exports = {
     browser: true
   },
   rules: {
+    "no-prototype-builtins": "off",
     "prettier/prettier": "error",
     "linebreak-style": "off",
     "semi": "off",

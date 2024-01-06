@@ -1,5 +1,5 @@
 import { lensPath, set, view } from "ramda"
-import { ZodObject, ZodOptional, ZodRawShape, ZodTypeAny, z } from "zod"
+import { z, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from "zod"
 
 import JSONParser from "./json-parser"
 
@@ -146,7 +146,7 @@ export class SchemaStream {
       }
     }
 
-    if (typeof key === undefined) return
+    if (typeof key === "undefined") return
 
     try {
       const valuePath = [...stack.map(({ key }) => key), key]
