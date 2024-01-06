@@ -7,7 +7,6 @@ To use `schema-stream`, you need to create a new instance of the class, passing 
 Then, you can call the `parse` method on the instance to parse a JSON stream.
 
 ```typescript
-
 const schema = z.object({
   someString: z.string(),
   someNumber: z.number()
