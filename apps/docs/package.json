@@ -108,8 +108,15 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/tailwind-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*"
+    "@repo/typescript-config": "workspace:*",
+    "@radix-ui/colors": "^1.0.1",
+    "@tailwindcss/typography": "^0.5.9",
+    "tailwindcss": "^3.3.2",
+    "tailwindcss-animate": "^1.0.6",
+    "tsx": "^3.12.7",
+    "windy-radix-palette": "^0.6.1"
   },
+
   "resolutions": {
     "vfile": "^6.0.0"
   }
