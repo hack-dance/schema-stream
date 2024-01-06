@@ -1,7 +1,8 @@
 # schema-stream
 
-\[!\[GitHub Actions Status\](https://img.shields.io/github/workflow/status/hack-dance/schema-stream/CI)](https://github.com/hack-dance/schema-stream/actions)
-\[!\[NPM Version\](https://img.shields.io/npm/v/schema-stream.svg)](https://www.npmjs.com/package/schema-stream)
+[![GitHub Actions Status](https://img.shields.io/github/workflow/status/hack-dance/schema-stream/CI)](https://github.com/hack-dance/schema-stream/actions)
+
+[![NPM Version](https://img.shields.io/npm/v/schema-stream.svg)](https://www.npmjs.com/package/schema-stream)
 
 `schema-stream` is a utility for parsing streams of JSON data. It provides a safe-to-read-from stubbed version of the data before the stream has fully completed. This utility is essential for handling large JSON streams efficiently and is built on top of Zod schema validation.
 
