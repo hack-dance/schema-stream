@@ -1,5 +1,11 @@
 # schema-stream
 
+## 1.5.0
+
+### Minor Changes
+
+- [`4a4b9dbf5501db7a12dba082609b3c4501acacdb`](https://github.com/hack-dance/schema-stream/commit/4a4b9dbf5501db7a12dba082609b3c4501acacdb) Thanks [@roodboi](https://github.com/roodboi)! - fixing build so package isnt empty
+
 ## 1.4.1
 
 ### Patch Changes
