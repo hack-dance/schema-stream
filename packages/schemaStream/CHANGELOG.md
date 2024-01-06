@@ -1,5 +1,11 @@
 # schema-stream
 
+## 1.4.1
+
+### Patch Changes
+
+- [`31f5aec1a99654393dd0fc485319992f19cb71be`](https://github.com/hack-dance/schema-stream/commit/31f5aec1a99654393dd0fc485319992f19cb71be) Thanks [@roodboi](https://github.com/roodboi)! - putting readme back
+
 ## 1.4.0
 
 ### Minor Changes
