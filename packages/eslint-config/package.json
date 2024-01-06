@@ -9,6 +9,8 @@
     "lib-internal.js"
   ],
   "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
+    "eslint": "8.36.0",
     "@vercel/style-guide": "^5.1.0",
     "eslint-config-turbo": "^1.10.12",
     "eslint-config-prettier": "^9.0.0",
