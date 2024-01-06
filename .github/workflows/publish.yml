@@ -16,9 +16,11 @@ jobs:
 
     name: Publish packages
     runs-on: ubuntu-latest
+    environment: PUBLISH
     env:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - name: Checkout Repo
