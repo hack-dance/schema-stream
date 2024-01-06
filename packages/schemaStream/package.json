@@ -14,11 +14,11 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "license": "MIT",
   "files": [
     "dist/**"
   ],
+  "sideEffects": false,
+  "license": "MIT",
   "scripts": {
     "test": "bun test --coverage --verbose",
     "build": "tsup",
