@@ -1,63 +1,76 @@
 # schema-stream
-`schema-stream` is a utility for parsing streams of JSON data. It provides a safe-to-read-from stubbed version of the data before the stream has fully completed.
+
+\[!\[GitHub Actions Status\](https://img.shields.io/github/workflow/status/hack-dance/schema-stream/CI)](https://github.com/hack-dance/schema-stream/actions)
+\[!\[NPM Version\](https://img.shields.io/npm/v/schema-stream.svg)](https://www.npmjs.com/package/schema-stream)
+
+`schema-stream` is a utility for parsing streams of JSON data. It provides a safe-to-read-from stubbed version of the data before the stream has fully completed. This utility is essential for handling large JSON streams efficiently and is built on top of Zod schema validation.
+
+## Installation
+
+```bash
+npm install schema-stream zod
+```
 
 ## Basic Usage
 
-To use `schema-stream`, you need to create a new instance of the class, passing in a Zod schema and optional default data.
-Then, you can call the `parse` method on the instance to parse a JSON stream.
+To use `schema-stream`, create a new instance of the class, passing in a Zod schema and optional default data. Then, call the `parse` method on the instance to parse a JSON stream.
 
 ```typescript
+import { SchemaStream } from 'schema-stream';
+import { z } from 'zod';
+
 const schema = z.object({
   someString: z.string(),
   someNumber: z.number()
-})
+});
 
-const response = await getSomeStreamOfJson()
+const response = await getSomeStreamOfJson();
 
 const parser = new SchemaStream(schema, {
   someString: "default string"
-})
+});
 
-const streamParser = parser.parse({})
+const streamParser = parser.parse({});
 
-response.body?.pipeThrough(parser)
+response.body?.pipeThrough(parser);
 
-const reader = streamParser.readable.getReader()
-const decoder = new TextDecoder()
-let result = {}
+const reader = streamParser.readable.getReader();
+const decoder = new TextDecoder();
+let result = {};
 
 while (!done) {
-  const { value, done: doneReading } = await reader.read()
-  done = doneReading
+  const { value, done: doneReading } = await reader.read();
+  done = doneReading;
 
   if (done) {
-    console.log(result)
-    break
+    console.log(result);
+    break;
   }
 
-  const chunkValue = decoder.decode(value)
-  result = JSON.parse(chunkValue)
+  const chunkValue = decoder.decode(value);
+  result = JSON.parse(chunkValue);
 }
 ```
 
+## Features
+
+- Stream JSON data parsing with partial data availability.
+- Zod schema validation for robust data handling.
+- Extensible configuration for customized parsing needs.
 
 ## Note
-A lot of the internal parser was forked from:
-https://github.com/juanjoDiaz/streamparser-json
 
-The primary difference is that this requires a zod schema and optional default data, to allow for a fully stubbed version of the expected data to be returned before the stream has completed. This allows for partially parsed data to be returned to the user asap, and for the user to be able to start working with the data before the stream has completed.
-
+A lot of the internal parser logic was forked from [streamparser-json](https://github.com/juanjoDiaz/streamparser-json). The primary difference is the requirement of a Zod schema and optional default data, allowing for a fully stubbed version of the expected data to be returned before the stream has completed.
 
 ## Related Packages
 
-### [@hackdance/hooks](https://github.com/hack-dance/agents/packages/hooks)
-A set of react hooks for working with streams. Includes a use-json-stream hook that uses this package
-to incrementally parse a stream of json data.
+- [@hackdance/hooks](https://github.com/hack-dance/agents/packages/hooks): A set of React hooks for working with streams, including a `use-json-stream` hook that uses `schema-stream`.
+- [@hackdance/agents](https://github.com/hack-dance/agents/packages/agents): Another set of React hooks for stream data handling.
 
-### [@hackdance/agents](https://github.com/hack-dance/agents/packages/agents)
-A set of react hooks for working with streams. Includes a use-json-stream hook that uses this package
-to incrementally parse a stream of json data.
+## Contributing
 
+Contributions to `schema-stream` are always welcome, whether it be improvements to the documentation or new functionality. Please feel free to open an issue or create a pull request.
 
 ## License
+
 MIT © [hack-dance](https://hack.dance)
