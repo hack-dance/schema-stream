@@ -9,11 +9,10 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 permissions: {} #reset
 env:
   CI: true
-  PNPM_CACHE_FOLDER: .pnpm-store
 
 jobs:
   release:
-    if: github.repository == 'hack-dance/agents'
+    if: github.repository == 'hack-dance/schema-stream'
     permissions:
       contents: write
       pull-requests: write
