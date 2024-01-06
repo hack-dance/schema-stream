@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@repo/constants": "workspace:*",
     "@repo/eslint-config": "workspace:*",
     "@repo/tailwind-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
