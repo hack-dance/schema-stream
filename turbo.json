@@ -1,0 +1,27 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "globalEnv": ["NODE_ENV", "CLERK_USER_WEBHOOK", "RW_ENV", "KV_REST_API_URL", "KV_REST_API_TOKEN"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "docs#build": {
+      "env": [],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "generate": {
+      "dependsOn": ["^generate"],
+      "cache": false
+    },
+    "lint": {}
+  }
+}
