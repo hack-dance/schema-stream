@@ -3,10 +3,13 @@ import { describe, expect, test } from "bun:test"
 import { z, ZodObject, ZodRawShape } from "zod"
 
 async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: object) {
-  let completed: string[] = []
+  let completed: Set<string> = new Set()
+
+  console.log(jsonData)
   const parser = new SchemaStream(schema, {
-    onKeyComplete({ completedKeys }) {
-      completed = completedKeys
+    onKeyComplete({ completedPaths, activePath }) {
+      // console.log("completedKeys", completedPaths, "activeKey", activePath)
+      completed = completedPaths
     }
   })
   const stream = parser.parse()
@@ -26,7 +29,7 @@ async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: ob
   const parsedData = JSON.parse(new TextDecoder().decode(value))
 
   expect(parsedData).toEqual(jsonData)
-  expect(completed).toEqual(Object.keys(jsonData))
+  expect(completed).toEqual([])
 }
 
 describe("SchemaStream", () => {

@@ -80,11 +80,11 @@ export default class TokenParser {
   private readonly paths?: (string[] | undefined)[]
   private readonly keepStack: boolean
   private readonly separator?: string
-  private state: TokenParserState = TokenParserState.VALUE
-  private mode: TokenParserMode | undefined = undefined
-  private key: JsonKey = undefined
-  private value: JsonStruct | undefined = undefined
-  private stack: StackElement[] = []
+  state: TokenParserState = TokenParserState.VALUE
+  mode: TokenParserMode | undefined = undefined
+  key: JsonKey = undefined
+  value: JsonStruct | undefined = undefined
+  stack: StackElement[] = []
 
   constructor(opts?: TokenParserOptions) {
     opts = { ...defaultOpts, ...opts }
