@@ -147,8 +147,10 @@ export class SchemaStream {
   }
 
   private getPathFromStack(stack: StackElement[] | undefined, key: JsonKey): JsonKey[] {
+    if (key == null || key == undefined) return []
     if (!stack) return [key]
-    return [...stack.map(({ key }) => key), key]
+    const newStack = [...stack.map(({ key }) => key), key]
+    return newStack.filter(key => key !== undefined)
   }
 
   private handleToken({
@@ -166,6 +168,7 @@ export class SchemaStream {
     if (this.activePath !== this.getPathFromStack(stack, key)) {
       this.activePath = this.getPathFromStack(stack, key)
 
+      // console.log("activePath", this.activePath)
       this.completedPaths.add(JSON.stringify(this.activePath))
 
       this.onKeyComplete &&

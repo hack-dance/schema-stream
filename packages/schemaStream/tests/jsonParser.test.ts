@@ -2,6 +2,27 @@ import { SchemaStream } from "@/index"
 import { describe, expect, test } from "bun:test"
 import { z, ZodObject, ZodRawShape } from "zod"
 
+function getPaths(obj, path = [], paths = []) {
+  if (Array.isArray(obj)) {
+    obj.forEach((item, index) => {
+      let newPath = path.concat(index)
+      paths.push(newPath)
+      if (typeof item === "object" && item !== null) {
+        getPaths(item, newPath, paths)
+      }
+    })
+  } else {
+    for (let key in obj) {
+      let newPath = path.concat(key)
+      paths.push(newPath)
+      if (typeof obj[key] === "object" && obj[key] !== null) {
+        getPaths(obj[key], newPath, paths)
+      }
+    }
+  }
+  return paths
+}
+
 async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: object) {
   let completed: Set<string> = new Set()
 
@@ -29,7 +50,7 @@ async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: ob
   const parsedData = JSON.parse(new TextDecoder().decode(value))
 
   expect(parsedData).toEqual(jsonData)
-  expect(completed).toEqual([])
+  expect([...completed].map(item => JSON.parse(item))).toEqual(getPaths(jsonData))
 }
 
 describe("SchemaStream", () => {
