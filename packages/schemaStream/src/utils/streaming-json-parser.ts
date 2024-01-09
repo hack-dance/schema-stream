@@ -13,6 +13,13 @@ type TypeDefaults = {
 type NestedValue = string | number | boolean | NestedObject | NestedValue[]
 type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValue }
 
+type OnKeyCompleteCallbackParams = {
+  completedKeys: string[]
+  activeKey: string
+}
+
+type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undefined
+
 /**
  * `SchemaStream` is a utility for parsing streams of json and
  * providing a safe-to-read-from stubbed version of the data before the stream
@@ -59,7 +66,7 @@ export class SchemaStream {
   private schemaInstance: NestedObject
   private activeKey: string | undefined
   private completedKeys: string[] = []
-  private onKeyComplete?: (data) => void | undefined
+  private onKeyComplete?: OnKeyCompleteCallback
 
   /**
    * Constructs a new instance of the `SchemaStream` class.
@@ -71,7 +78,7 @@ export class SchemaStream {
     opts: {
       defaultData?: object | null
       typeDefaults?: TypeDefaults
-      onKeyComplete?: (data) => void | undefined
+      onKeyComplete?: OnKeyCompleteCallback
     } = {}
   ) {
     const { defaultData, onKeyComplete, typeDefaults } = opts
