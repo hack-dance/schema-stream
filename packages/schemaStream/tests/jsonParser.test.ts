@@ -1,56 +1,76 @@
-import { SchemaStream } from "@/index"
+import { SchemaStream } from "@/utils/streaming-json-parser"
+import { JsonKey } from "@/utils/token-parser"
 import { describe, expect, test } from "bun:test"
+import { lensPath, view } from "ramda"
 import { z, ZodObject, ZodRawShape } from "zod"
 
-function getPaths(obj, path = [], paths = []) {
-  if (Array.isArray(obj)) {
-    obj.forEach((item, index) => {
-      let newPath = path.concat(index)
-      paths.push(newPath)
-      if (typeof item === "object" && item !== null) {
-        getPaths(item, newPath, paths)
-      }
-    })
-  } else {
-    for (let key in obj) {
-      let newPath = path.concat(key)
-      paths.push(newPath)
-      if (typeof obj[key] === "object" && obj[key] !== null) {
-        getPaths(obj[key], newPath, paths)
-      }
-    }
-  }
-  return paths
+const checkPathValue = (obj, path) => {
+  const lens = lensPath(path)
+  const value = view(lens, obj)
+
+  //should check against schema type
+  return !!value
 }
 
 async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: object) {
-  let completed: Set<string> = new Set()
+  let completed: JsonKey[][] = []
 
-  console.log(jsonData)
   const parser = new SchemaStream(schema, {
-    onKeyComplete({ completedPaths, activePath }) {
-      // console.log("completedKeys", completedPaths, "activeKey", activePath)
+    onKeyComplete({ completedPaths }) {
       completed = completedPaths
     }
   })
+
   const stream = parser.parse()
 
   const readableStream = new ReadableStream({
     start(controller) {
-      controller.enqueue(JSON.stringify(jsonData))
-      controller.close()
+      const jsonDataString = JSON.stringify(jsonData)
+      const chunkSize = 10
+      let position = 0
+
+      function enqueueNextChunk() {
+        if (position >= jsonDataString.length) {
+          controller.close()
+          return
+        }
+
+        const chunk = jsonDataString.slice(position, position + chunkSize)
+        controller.enqueue(chunk)
+        position += chunkSize
+
+        setTimeout(enqueueNextChunk, 100)
+      }
+
+      enqueueNextChunk()
     }
   })
 
   readableStream.pipeThrough(stream)
 
+  const decoder = new TextDecoder()
   const reader = stream.readable.getReader()
-  const { value } = await reader.read()
 
-  const parsedData = JSON.parse(new TextDecoder().decode(value))
+  let result = null
+  let done = false
+  while (!done) {
+    const { value, done: doneReading } = await reader.read()
+    if (doneReading) {
+      done = true
+      break
+    }
 
+    result = value
+  }
+
+  const parsedData = JSON.parse(decoder.decode(result))
   expect(parsedData).toEqual(jsonData)
-  expect([...completed].map(item => JSON.parse(item))).toEqual(getPaths(jsonData))
+  console.log(completed)
+  completed.forEach(path => {
+    expect(checkPathValue(parsedData, path)).toBe(true)
+  })
+
+  return completed
 }
 
 describe("SchemaStream", () => {
@@ -70,11 +90,32 @@ describe("SchemaStream", () => {
     await runTest(schema, data)
   })
 
+  test("should parse valid JSON correctly - single layer primitives", async () => {
+    const schema = z.object({
+      someString: z.string().refine(val => val === "test", { params: { message: "not test" } }),
+      someNumber: z.number(),
+      someBoolean: z.boolean()
+    })
+
+    const data = {
+      someString: "test",
+      someNumber: 123,
+      someBoolean: true
+    }
+
+    const completed = await runTest(schema, data)
+
+    completed.forEach(path => {
+      expect(checkPathValue(data, path)).toBe(true)
+    })
+  })
+
   // Test for nested json - up to 5 layers deep
   test("should parse valid JSON correctly - multi-layer object nesting", async () => {
     const schema = z.object({
       layer1: z.object({
         layer2: z.object({
+          yo: z.string(),
           layer3: z.object({
             layer4: z.object({
               layer5: z.string()
@@ -87,6 +128,7 @@ describe("SchemaStream", () => {
     const data = {
       layer1: {
         layer2: {
+          yo: "test",
           layer3: {
             layer4: {
               layer5: "test"

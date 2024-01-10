@@ -4,7 +4,6 @@ import { z, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from "zod"
 import JSONParser from "./json-parser"
 import {
   JsonKey,
-  ParsedElementInfo,
   ParsedTokenInfo,
   StackElement,
   TokenParserMode,
@@ -23,7 +22,7 @@ type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValu
 
 type OnKeyCompleteCallbackParams = {
   activePath: JsonKey[]
-  completedPaths: Set<string>
+  completedPaths: JsonKey[][]
 }
 
 type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undefined
@@ -73,7 +72,7 @@ type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undef
 export class SchemaStream {
   private schemaInstance: NestedObject
   private activePath: JsonKey[] = []
-  private completedPaths: Set<string> = new Set()
+  private completedPaths: JsonKey[][] = []
   private onKeyComplete?: OnKeyCompleteCallback
 
   /**
@@ -147,14 +146,14 @@ export class SchemaStream {
   }
 
   private getPathFromStack(stack: StackElement[] | undefined, key: JsonKey): JsonKey[] {
-    if (key == null || key == undefined) return []
-    if (!stack) return [key]
-    const newStack = [...stack.map(({ key }) => key), key]
-    return newStack.filter(key => key !== undefined)
+    const valuePath = [...stack.map(({ key }) => key), key]
+    valuePath.shift()
+
+    return valuePath
   }
 
   private handleToken({
-    parser: { state, key, mode, stack },
+    parser: { key, stack },
     tokenizer: { token, value, partial }
   }: {
     parser: {
@@ -165,12 +164,9 @@ export class SchemaStream {
     }
     tokenizer: ParsedTokenInfo
   }): void {
-    if (this.activePath !== this.getPathFromStack(stack, key)) {
+    if (this.activePath !== this.getPathFromStack(stack, key) || this.activePath.length === 0) {
       this.activePath = this.getPathFromStack(stack, key)
-
-      // console.log("activePath", this.activePath)
-      this.completedPaths.add(JSON.stringify(this.activePath))
-
+      !partial && this.completedPaths.push(this.activePath)
       this.onKeyComplete &&
         this.onKeyComplete({
           activePath: this.activePath,
@@ -178,12 +174,8 @@ export class SchemaStream {
         })
     }
 
-    if (typeof key === "undefined") return
-
     try {
-      const valuePath = [...stack.map(({ key }) => key), key]
-
-      valuePath.shift()
+      const valuePath = this.getPathFromStack(stack, key)
       const lens = lensPath(valuePath)
 
       if (partial) {
@@ -240,10 +232,11 @@ export class SchemaStream {
       flush() {
         this.onKeyComplete &&
           this.onKeyComplete({
-            completedKeys: this.completedKeys,
-            activeKey: undefined
+            completedPaths: this.completedPaths,
+            activePath: undefined
           })
-        this.activeKey = undefined
+
+        this.activePath = undefined
       }
     })
 
