@@ -1,5 +1,11 @@
 # schema-stream
 
+## 2.0.1
+
+### Patch Changes
+
+- [`bc1b41792c23ae11b29435f7d9f6910e337a69ec`](https://github.com/hack-dance/schema-stream/commit/bc1b41792c23ae11b29435f7d9f6910e337a69ec) Thanks [@roodboi](https://github.com/roodboi)! - hot patch to fix bad view update
+
 ## 2.0.0
 
 ### Major Changes
