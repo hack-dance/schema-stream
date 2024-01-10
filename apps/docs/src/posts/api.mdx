@@ -16,7 +16,7 @@ constructor(
   opts: {
     defaultData?: NestedObject | null,
     typeDefaults?: TypeDefaults,
-    onKeyComplete?: (data: { activeKey: string, completedKeys: string[] }) => void
+    onKeyComplete?: (data: { activePath: string, completedPaths: string[] }) => void
   } = {}
 )
 ```
@@ -59,8 +59,8 @@ Configures and returns a `TransformStream` for processing the JSON data.
 const schema = z.object({ ... });
 const parser = new SchemaStream(schema, {
   defaultData: { key: 'value' },
-  onKeyComplete: ({ activeKey, completedKeys }) => {
-    console.log(`Active key: ${activeKey}, Completed keys: ${completedKeys}`);
+  onKeyComplete: ({ activePath, completedPaths }) => {
+    console.log(`Active key: ${activePath}, Completed keys: ${completedPaths}`);
   }
 });
 

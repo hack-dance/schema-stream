@@ -1,6 +1,9 @@
 import TokenParser, {
+  JsonKey,
   ParsedElementInfo,
   ParsedTokenInfo,
+  StackElement,
+  TokenParserMode,
   TokenParserState,
   type TokenParserOptions
 } from "./token-parser"
@@ -10,8 +13,8 @@ import Tokenizer, { type TokenizerOptions } from "./tokenizer"
 export interface JSONParserOptions extends TokenizerOptions, TokenParserOptions {}
 
 export default class JSONParser {
-  private tokenizer
-  private tokenParser
+  private tokenizer: Tokenizer
+  private tokenParser: TokenParser
 
   constructor(opts: JSONParserOptions = {}) {
     this.tokenizer = new Tokenizer(opts)
@@ -40,7 +43,17 @@ export default class JSONParser {
     this.tokenizer.end()
   }
 
-  public set onToken(cb: (parsedTokenInfo: ParsedTokenInfo) => void) {
+  public set onToken(
+    cb: (parsedTokenInfo: {
+      parser: {
+        state: TokenParserState
+        key: JsonKey
+        mode: TokenParserMode
+        stack: StackElement[]
+      }
+      tokenizer: ParsedTokenInfo
+    }) => void
+  ) {
     this.tokenizer.onToken = parsedToken => {
       const valueTokenTypes = [
         TokenType.STRING,
@@ -55,11 +68,13 @@ export default class JSONParser {
         valueTokenTypes.includes(parsedToken.token)
       ) {
         cb({
-          state: this.tokenParser.state,
-          key: this.tokenParser.key,
-          mode: this.tokenParser.mode,
-          stack: this.tokenParser.stack,
-          ...parsedToken
+          parser: {
+            state: this.tokenParser.state,
+            key: this.tokenParser.key,
+            mode: this.tokenParser.mode,
+            stack: this.tokenParser.stack
+          },
+          tokenizer: parsedToken
         })
       }
 

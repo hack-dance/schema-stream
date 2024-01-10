@@ -2,6 +2,7 @@ import { lensPath, set, view } from "ramda"
 import { z, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from "zod"
 
 import JSONParser from "./json-parser"
+import { ParsedTokenInfo, StackElement, TokenParserMode, TokenParserState } from "./token-parser"
 
 type SchemaType<T extends ZodRawShape = ZodRawShape> = ZodObject<T>
 type TypeDefaults = {
@@ -12,6 +13,13 @@ type TypeDefaults = {
 
 type NestedValue = string | number | boolean | NestedObject | NestedValue[]
 type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValue }
+
+type OnKeyCompleteCallbackParams = {
+  activePath: (string | number | undefined)[]
+  completedPaths: (string | number | undefined)[][]
+}
+
+type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undefined
 
 /**
  * `SchemaStream` is a utility for parsing streams of json and
@@ -57,9 +65,9 @@ type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValu
 
 export class SchemaStream {
   private schemaInstance: NestedObject
-  private activeKey: string | undefined
-  private completedKeys: string[] = []
-  private onKeyComplete?: (data) => void | undefined
+  private activePath: (string | number | undefined)[] = []
+  private completedPaths: (string | number | undefined)[][] = []
+  private onKeyComplete?: OnKeyCompleteCallback
 
   /**
    * Constructs a new instance of the `SchemaStream` class.
@@ -71,7 +79,7 @@ export class SchemaStream {
     opts: {
       defaultData?: object | null
       typeDefaults?: TypeDefaults
-      onKeyComplete?: (data) => void | undefined
+      onKeyComplete?: OnKeyCompleteCallback
     } = {}
   ) {
     const { defaultData, onKeyComplete, typeDefaults } = opts
@@ -131,30 +139,44 @@ export class SchemaStream {
     return obj
   }
 
-  private handleToken({ token, value, partial, key, stack }) {
-    if (this.activeKey !== key) {
-      this.activeKey = key
+  private getPathFromStack(
+    stack: StackElement[] | undefined,
+    key: string | number | undefined
+  ): (string | number | undefined)[] {
+    const valuePath = [...stack.map(({ key }) => key), key]
+    valuePath.shift()
 
-      if (typeof this.activeKey === "string") {
-        this.completedKeys.push(this.activeKey)
+    return valuePath
+  }
 
-        this.onKeyComplete &&
-          this.onKeyComplete({
-            completedKeys: this.completedKeys,
-            activeKey: this.activeKey
-          })
-      }
+  private handleToken({
+    parser: { key, stack },
+    tokenizer: { token, value, partial }
+  }: {
+    parser: {
+      state: TokenParserState
+      key: string | number | undefined
+      mode: TokenParserMode
+      stack: StackElement[]
+    }
+    tokenizer: ParsedTokenInfo
+  }): void {
+    if (this.activePath !== this.getPathFromStack(stack, key) || this.activePath.length === 0) {
+      this.activePath = this.getPathFromStack(stack, key)
+      !partial && this.completedPaths.push(this.activePath)
+      this.onKeyComplete &&
+        this.onKeyComplete({
+          activePath: this.activePath,
+          completedPaths: this.completedPaths
+        })
     }
 
-    if (typeof key === "undefined") return
-
     try {
-      const valuePath = [...stack.map(({ key }) => key), key]
-      valuePath.shift()
+      const valuePath = this.getPathFromStack(stack, key)
       const lens = lensPath(valuePath)
 
       if (partial) {
-        let currentValue = view(lens, value, this.schemaInstance) ?? ""
+        let currentValue = view(lens, this.schemaInstance) ?? ""
         const updatedValue = (currentValue += value)
         const updatedSchemaInstance = set(lens, updatedValue, this.schemaInstance)
         this.schemaInstance = updatedSchemaInstance
@@ -205,7 +227,13 @@ export class SchemaStream {
         }
       },
       flush() {
-        this.activeKey = undefined
+        this.onKeyComplete &&
+          this.onKeyComplete({
+            completedPaths: this.completedPaths,
+            activePath: undefined
+          })
+
+        this.activePath = undefined
       }
     })
 
