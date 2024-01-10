@@ -1,5 +1,4 @@
 import { SchemaStream } from "@/utils/streaming-json-parser"
-import { JsonKey } from "@/utils/token-parser"
 import { describe, expect, test } from "bun:test"
 import { lensPath, view } from "ramda"
 import { z, ZodObject, ZodRawShape } from "zod"
@@ -13,7 +12,7 @@ const checkPathValue = (obj, path) => {
 }
 
 async function runTest<T extends ZodRawShape>(schema: ZodObject<T>, jsonData: object) {
-  let completed: JsonKey[][] = []
+  let completed: (string | number | undefined)[][] = []
 
   const parser = new SchemaStream(schema, {
     onKeyComplete({ completedPaths }) {

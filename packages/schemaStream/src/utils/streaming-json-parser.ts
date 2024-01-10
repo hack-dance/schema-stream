@@ -2,13 +2,7 @@ import { lensPath, set, view } from "ramda"
 import { z, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from "zod"
 
 import JSONParser from "./json-parser"
-import {
-  JsonKey,
-  ParsedTokenInfo,
-  StackElement,
-  TokenParserMode,
-  TokenParserState
-} from "./token-parser"
+import { ParsedTokenInfo, StackElement, TokenParserMode, TokenParserState } from "./token-parser"
 
 type SchemaType<T extends ZodRawShape = ZodRawShape> = ZodObject<T>
 type TypeDefaults = {
@@ -21,8 +15,8 @@ type NestedValue = string | number | boolean | NestedObject | NestedValue[]
 type NestedObject = { [key: string]: NestedValue } | { [key: number]: NestedValue }
 
 type OnKeyCompleteCallbackParams = {
-  activePath: JsonKey[]
-  completedPaths: JsonKey[][]
+  activePath: (string | number | undefined)[]
+  completedPaths: (string | number | undefined)[][]
 }
 
 type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undefined
@@ -71,8 +65,8 @@ type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void | undef
 
 export class SchemaStream {
   private schemaInstance: NestedObject
-  private activePath: JsonKey[] = []
-  private completedPaths: JsonKey[][] = []
+  private activePath: (string | number | undefined)[] = []
+  private completedPaths: (string | number | undefined)[][] = []
   private onKeyComplete?: OnKeyCompleteCallback
 
   /**
@@ -145,7 +139,10 @@ export class SchemaStream {
     return obj
   }
 
-  private getPathFromStack(stack: StackElement[] | undefined, key: JsonKey): JsonKey[] {
+  private getPathFromStack(
+    stack: StackElement[] | undefined,
+    key: string | number | undefined
+  ): (string | number | undefined)[] {
     const valuePath = [...stack.map(({ key }) => key), key]
     valuePath.shift()
 
@@ -158,7 +155,7 @@ export class SchemaStream {
   }: {
     parser: {
       state: TokenParserState
-      key: JsonKey
+      key: string | number | undefined
       mode: TokenParserMode
       stack: StackElement[]
     }
