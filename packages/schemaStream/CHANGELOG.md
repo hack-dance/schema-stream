@@ -1,5 +1,15 @@
 # schema-stream
 
+## 2.0.0
+
+### Major Changes
+
+- [#9](https://github.com/hack-dance/schema-stream/pull/9) [`cbf57f0a202f5bb662df8761410e78ee49e819af`](https://github.com/hack-dance/schema-stream/commit/cbf57f0a202f5bb662df8761410e78ee49e819af) Thanks [@roodboi](https://github.com/roodboi)! - Updating the completion tracking to use paths vs keys
+
+### Patch Changes
+
+- [`08b86d0754df3a813374a6fba4117ba9974c3daf`](https://github.com/hack-dance/schema-stream/commit/08b86d0754df3a813374a6fba4117ba9974c3daf) Thanks [@roodboi](https://github.com/roodboi)! - updating lint rules and fixing a bad undefined check
+
 ## 1.6.0
 
 ### Minor Changes
