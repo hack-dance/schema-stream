@@ -179,7 +179,7 @@ export class SchemaStream {
       const lens = lensPath(valuePath)
 
       if (partial) {
-        let currentValue = view(lens, value) ?? ""
+        let currentValue = view(lens, this.schemaInstance) ?? ""
         const updatedValue = (currentValue += value)
         const updatedSchemaInstance = set(lens, updatedValue, this.schemaInstance)
         this.schemaInstance = updatedSchemaInstance
