@@ -1,3 +1,7 @@
+> [!WARNING]
+> The source for this package has moved to a central mono-repo located here: [island-ai](https://github.com/hack-dance/island-ai/tree/main/public-packages/schemaStream)
+
+
 # schema-stream
 
 ![GitHub Actions Status](https://github.com/github/docs/actions/workflows/test.yml/badge.svg?branch=main) [![NPM Version](https://img.shields.io/npm/v/schema-stream.svg)](https://www.npmjs.com/package/schema-stream)
@@ -58,21 +62,5 @@ while (!done) {
   result = JSON.parse(chunkValue);
 }
 ```
-
-
-## Note
-
-A lot of the internal parser logic was forked from [streamparser-json](https://github.com/juanjoDiaz/streamparser-json). The primary difference is the requirement of a Zod schema and optional default data, allowing for a fully stubbed version of the expected data to be returned before the stream has completed.
-
-## Related Packages
-
-- [@hackdance/hooks](https://github.com/hack-dance/agents/tree/main/packages/hooks): A set of React hooks for working with streams, including a `use-json-stream` hook that uses `schema-stream`.
-- [@hackdance/agents](https://github.com/hack-dance/agents/tree/main/packages/core): Another set of React hooks for stream data handling.
-
-## Contributing
-
-Contributions to `schema-stream` are always welcome, whether it be improvements to the documentation or new functionality. Please feel free to open an issue or create a pull request.
-
-## License
 
 MIT © [hack-dance](https://hack.dance)
