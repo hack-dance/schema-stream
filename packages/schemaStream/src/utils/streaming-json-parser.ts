@@ -115,6 +115,10 @@ export class SchemaStream {
         return this.getDefaultValue(type._def.schema)
       case "ZodNullable":
         return null
+      case "ZodEnum":
+        return null
+      case "ZodNativeEnum":
+        return null
       default:
         throw new Error(`Unsupported type: ${type._def.typeName}`)
     }
