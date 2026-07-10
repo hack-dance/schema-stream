@@ -1,6 +1,6 @@
-import { SchemaStream, type SchemaStreamChunk, type SnapshotPolicy } from "@/index"
 import { describe, expect, test } from "bun:test"
 import * as z from "zod"
+import { SchemaStream, type SchemaStreamChunk, type SnapshotPolicy } from "@/index"
 
 async function collect<TSchema extends z.ZodObject>(
   stream: AsyncIterable<SchemaStreamChunk<TSchema>>
@@ -58,7 +58,9 @@ describe("SchemaStream.iterate", () => {
     const chunks = ['{"title":"hel', 'lo","nested":{"count":', "2}}"]
     const source = new ReadableStream<string>({
       start(controller) {
-        for (const chunk of chunks) controller.enqueue(chunk)
+        for (const chunk of chunks) {
+          controller.enqueue(chunk)
+        }
         controller.close()
       }
     })
@@ -85,7 +87,9 @@ describe("SchemaStream.iterate", () => {
     ]
     const source = new ReadableStream<Uint8Array>({
       start(controller) {
-        for (const chunk of chunks) controller.enqueue(chunk)
+        for (const chunk of chunks) {
+          controller.enqueue(chunk)
+        }
         controller.close()
       }
     })
@@ -233,7 +237,9 @@ describe("SchemaStream.iterate", () => {
     const first = (await iterator.next()).value
 
     expect(first).toBeDefined()
-    if (!first) throw new Error("expected the first snapshot")
+    if (!first) {
+      throw new Error("expected the first snapshot")
+    }
     first.nested!.text = "consumer mutation"
     first.items!.push({ name: "consumer item" })
 

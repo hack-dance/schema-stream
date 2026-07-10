@@ -1,5 +1,7 @@
 import type * as z4 from "zod/v4/core"
 
+const zodTypePrefixPattern = /^Zod/
+
 /** Minimal structural contract used to support a Zod 3 schema without importing its runtime. */
 export type Zod3Schema = {
   readonly _def: unknown
@@ -90,7 +92,7 @@ function getSchemaDefinition(schema: ZodSchema): SchemaDefinition {
 
   return {
     major: 3,
-    type: definition.typeName?.replace(/^Zod/, "").toLowerCase() ?? "unknown",
+    type: definition.typeName?.replace(zodTypePrefixPattern, "").toLowerCase() ?? "unknown",
     definition
   }
 }
@@ -124,7 +126,7 @@ export function getSchemaNode(schema: ZodSchema): SchemaNode {
   const schemaDefinition = getSchemaDefinition(schema)
 
   if (schemaDefinition.major === 4) {
-    const definition = schemaDefinition.definition
+    const { definition } = schemaDefinition
 
     switch (definition.type) {
       case "array":
@@ -157,7 +159,7 @@ export function getSchemaNode(schema: ZodSchema): SchemaNode {
     }
   }
 
-  const definition = schemaDefinition.definition
+  const { definition } = schemaDefinition
 
   switch (schemaDefinition.type) {
     case "array":

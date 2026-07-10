@@ -209,12 +209,14 @@ describe("snapshot policies", () => {
     })
     const expected = {
       content: "x".repeat(2 * 1024 * 1024),
-      records: Array.from({ length: 1_000 }, (_, id) => ({ id, active: id % 2 === 0 }))
+      records: Array.from({ length: 1000 }, (_, id) => ({ id, active: id % 2 === 0 }))
     }
     const chunks = splitBytes(JSON.stringify(expected), 64 * 1024)
     const source = new ReadableStream<Uint8Array>({
       start(controller) {
-        for (const chunk of chunks) controller.enqueue(chunk)
+        for (const chunk of chunks) {
+          controller.enqueue(chunk)
+        }
         controller.close()
       }
     })

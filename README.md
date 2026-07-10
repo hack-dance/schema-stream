@@ -198,12 +198,18 @@ for await (const bytes of snapshots) {
 ```bash
 mise install
 bun install
+bun run format
+bun run lint
 bun run check
 ```
 
 `mise.toml` pins Bun 1.3.14 and the current Node 24 release. Maintainers type-check and emit
 declarations with TypeScript 7.0.2. TypeScript is a development-only dependency, so installing
 `schema-stream` does not install or require TypeScript 7.
+
+Ultracite and Biome own formatting and linting. `bun run format` applies safe fixes, `bun run lint`
+checks the repository without writing, and `bun run check` includes linting before type checks,
+tests, and packed-consumer verification.
 
 `test:packed` installs the generated tarball into clean consumers and verifies ESM, CommonJS,
 Zod 4/Mini, Zod 3, OpenAI Agents SDK, and Vercel AI SDK compatibility with TypeScript 5.9 without

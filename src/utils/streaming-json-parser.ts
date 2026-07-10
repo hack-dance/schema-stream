@@ -80,17 +80,18 @@ export type SchemaStreamInputChunk = string | Uint8Array
 
 /** A Web Stream or async iterable that supplies JSON text or UTF-8 bytes. */
 export type SchemaStreamSource<TChunk extends SchemaStreamInputChunk = SchemaStreamInputChunk> =
-  ReadableStream<TChunk> | AsyncIterable<TChunk>
+  | ReadableStream<TChunk>
+  | AsyncIterable<TChunk>
 
 type OpenSource<TChunk extends SchemaStreamInputChunk> = {
   iterator: AsyncIterator<TChunk>
-  finish(cancel: boolean): Promise<void>
+  finish: (cancel: boolean) => Promise<void>
 }
 
 type JsonContainer = Record<string | number, unknown>
 
 function hasOwn(value: object, key: PropertyKey): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key)
+  return Object.hasOwn(value, key)
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -132,7 +133,7 @@ function setPathValue(target: Record<string, unknown>, path: SchemaPath, value: 
     current = nextValue
   }
 
-  const finalSegment = path[path.length - 1]
+  const finalSegment = path.at(-1)
   if (finalSegment !== undefined) {
     setOwnValue(current, finalSegment, value)
   }
@@ -141,8 +142,12 @@ function setPathValue(target: Record<string, unknown>, path: SchemaPath, value: 
 function getPathKey(path: SchemaPath): string {
   return path
     .map(segment => {
-      if (segment === undefined) return "u"
-      if (typeof segment === "number") return `n:${segment}`
+      if (segment === undefined) {
+        return "u"
+      }
+      if (typeof segment === "number") {
+        return `n:${segment}`
+      }
       return `s:${segment.length}:${segment}`
     })
     .join("|")
@@ -202,10 +207,10 @@ function openSource<TChunk extends SchemaStreamInputChunk>(
  * @typeParam TSchema - Object schema that determines placeholders and snapshot inference.
  */
 export class SchemaStream<TSchema extends ZodObjectSchema> {
-  private schemaInstance: Record<string, unknown>
+  private readonly schemaInstance: Record<string, unknown>
   private activePath: SchemaPath = []
-  private completedPaths: SchemaPath[] = []
-  private completedPathKeys = new Set<string>()
+  private readonly completedPaths: SchemaPath[] = []
+  private readonly completedPathKeys = new Set<string>()
   private readonly onKeyComplete?: OnKeyCompleteCallback
   private readonly typeDefaults?: TypeDefaults
 
@@ -276,6 +281,8 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
       case "null":
       case "unknown":
         return null
+      default:
+        return null
     }
   }
 
@@ -305,10 +312,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     return this.createBlankObjectFromShape(getObjectShape(schema), defaultData, new Set([schema]))
   }
 
-  private getPathFromStack(
-    stack: StackElement[] = [],
-    key: string | number | undefined
-  ): SchemaPath {
+  private getPathFromStack(stack: StackElement[], key: string | number | undefined): SchemaPath {
     return [...stack.map(element => element.key), key].slice(1)
   }
 
@@ -374,8 +378,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     const snapshotPolicy = options.snapshotPolicy ?? { mode: "chunk" }
     if (
       snapshotPolicy.mode === "bytes" &&
-      (!Number.isFinite(snapshotPolicy.bytes) ||
-        !Number.isInteger(snapshotPolicy.bytes) ||
+      (!(Number.isFinite(snapshotPolicy.bytes) && Number.isInteger(snapshotPolicy.bytes)) ||
         snapshotPolicy.bytes <= 0)
     ) {
       throw new TypeError("snapshotPolicy.bytes must be a positive, finite integer")

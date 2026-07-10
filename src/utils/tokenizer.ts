@@ -15,35 +15,35 @@ import { charset, escapedSequences } from "./utf-8.js"
 
 // Tokenizer States
 const enum TokenizerStates {
-  START,
-  ENDED,
-  ERROR,
-  TRUE1,
-  TRUE2,
-  TRUE3,
-  FALSE1,
-  FALSE2,
-  FALSE3,
-  FALSE4,
-  NULL1,
-  NULL2,
-  NULL3,
-  STRING_DEFAULT,
-  STRING_AFTER_BACKSLASH,
-  STRING_UNICODE_DIGIT_1,
-  STRING_UNICODE_DIGIT_2,
-  STRING_UNICODE_DIGIT_3,
-  STRING_UNICODE_DIGIT_4,
-  STRING_INCOMPLETE_CHAR,
-  NUMBER_AFTER_INITIAL_MINUS,
-  NUMBER_AFTER_INITIAL_ZERO,
-  NUMBER_AFTER_INITIAL_NON_ZERO,
-  NUMBER_AFTER_FULL_STOP,
-  NUMBER_AFTER_DECIMAL,
-  NUMBER_AFTER_E,
-  NUMBER_AFTER_E_AND_SIGN,
-  NUMBER_AFTER_E_AND_DIGIT,
-  SEPARATOR
+  START = 0,
+  ENDED = 1,
+  ERROR = 2,
+  TRUE1 = 3,
+  TRUE2 = 4,
+  TRUE3 = 5,
+  FALSE1 = 6,
+  FALSE2 = 7,
+  FALSE3 = 8,
+  FALSE4 = 9,
+  NULL1 = 10,
+  NULL2 = 11,
+  NULL3 = 12,
+  STRING_DEFAULT = 13,
+  STRING_AFTER_BACKSLASH = 14,
+  STRING_UNICODE_DIGIT_1 = 15,
+  STRING_UNICODE_DIGIT_2 = 16,
+  STRING_UNICODE_DIGIT_3 = 17,
+  STRING_UNICODE_DIGIT_4 = 18,
+  STRING_INCOMPLETE_CHAR = 19,
+  NUMBER_AFTER_INITIAL_MINUS = 20,
+  NUMBER_AFTER_INITIAL_ZERO = 21,
+  NUMBER_AFTER_INITIAL_NON_ZERO = 22,
+  NUMBER_AFTER_FULL_STOP = 23,
+  NUMBER_AFTER_DECIMAL = 24,
+  NUMBER_AFTER_E = 25,
+  NUMBER_AFTER_E_AND_SIGN = 26,
+  NUMBER_AFTER_E_AND_DIGIT = 27,
+  SEPARATOR = 28
 }
 
 function tokenizerStateToString(tokenizerState: TokenizerStates): string {
@@ -81,10 +81,10 @@ function tokenizerStateToString(tokenizerState: TokenizerStates): string {
 }
 
 export interface TokenizerOptions {
-  stringBufferSize?: number
+  handleUnescapedNewLines?: boolean
   numberBufferSize?: number
   separator?: string
-  handleUnescapedNewLines?: boolean
+  stringBufferSize?: number
 }
 
 const defaultOpts: TokenizerOptions = {
@@ -104,30 +104,32 @@ export class TokenizerError extends Error {
 export default class Tokenizer {
   private state = TokenizerStates.START
 
-  private handleUnescapedNewLines?: boolean
-  private separator?: string
-  private separatorBytes?: Uint8Array
+  private readonly handleUnescapedNewLines?: boolean
+  private readonly separator?: string
+  private readonly separatorBytes?: Uint8Array
   private separatorIndex = 0
-  private bufferedString: StringBuilder
-  private bufferedNumber: StringBuilder
+  private readonly bufferedString: StringBuilder
+  private readonly bufferedNumber: StringBuilder
 
   private unicode?: string // unicode escapes
   private highSurrogate?: number
   private bytesRemaining = 0
   private bytesInSequence = 0
-  private charSplitBuffer = new Uint8Array(4)
-  private encoder = new TextEncoder()
+  private readonly charSplitBuffer = new Uint8Array(4)
+  private readonly encoder = new TextEncoder()
   private offset = -1
 
   private appendPendingHighSurrogate(): void {
-    if (this.highSurrogate === undefined) return
+    if (this.highSurrogate === undefined) {
+      return
+    }
 
     this.bufferedString.appendString(String.fromCharCode(this.highSurrogate))
     this.highSurrogate = undefined
   }
 
   constructor(opts?: TokenizerOptions) {
-    opts = { ...defaultOpts, ...opts }
+    const options = { ...defaultOpts, ...opts }
 
     const onIncrementalString = (str: string) => {
       this.onToken({
@@ -138,20 +140,20 @@ export default class Tokenizer {
     }
 
     this.bufferedString =
-      opts?.stringBufferSize && opts.stringBufferSize > 0
-        ? new BufferedString(opts.stringBufferSize)
+      options.stringBufferSize && options.stringBufferSize > 0
+        ? new BufferedString(options.stringBufferSize)
         : new NonBufferedString({
             onIncrementalString
           })
 
     this.bufferedNumber =
-      opts?.numberBufferSize && opts.numberBufferSize > 0
-        ? new BufferedString(opts.numberBufferSize, onIncrementalString)
+      options.numberBufferSize && options.numberBufferSize > 0
+        ? new BufferedString(options.numberBufferSize, onIncrementalString)
         : new NonBufferedString({})
 
-    this.handleUnescapedNewLines = opts?.handleUnescapedNewLines ?? false
-    this.separator = opts?.separator
-    this.separatorBytes = opts?.separator ? this.encoder.encode(opts.separator) : undefined
+    this.handleUnescapedNewLines = options.handleUnescapedNewLines ?? false
+    this.separator = options.separator
+    this.separatorBytes = options.separator ? this.encoder.encode(options.separator) : undefined
   }
 
   public get isEnded(): boolean {
@@ -401,26 +403,24 @@ export default class Tokenizer {
               (n >= charset.LATIN_CAPITAL_LETTER_A && n <= charset.LATIN_CAPITAL_LETTER_F) ||
               (n >= charset.LATIN_SMALL_LETTER_A && n <= charset.LATIN_SMALL_LETTER_F)
             ) {
-              const intVal = parseInt(this.unicode + String.fromCharCode(n), 16)
+              const intVal = Number.parseInt(this.unicode + String.fromCharCode(n), 16)
               if (this.highSurrogate === undefined) {
-                if (intVal >= 0xd800 && intVal <= 0xdbff) {
+                if (intVal >= 0xd8_00 && intVal <= 0xdb_ff) {
                   //<55296,56319> - highSurrogate
                   this.highSurrogate = intVal
                 } else {
                   this.bufferedString.appendString(String.fromCharCode(intVal))
                 }
+              } else if (intVal >= 0xdc_00 && intVal <= 0xdf_ff) {
+                //<56320,57343> - lowSurrogate
+                this.bufferedString.appendString(String.fromCharCode(this.highSurrogate, intVal))
+                this.highSurrogate = undefined
               } else {
-                if (intVal >= 0xdc00 && intVal <= 0xdfff) {
-                  //<56320,57343> - lowSurrogate
-                  this.bufferedString.appendString(String.fromCharCode(this.highSurrogate, intVal))
-                  this.highSurrogate = undefined
+                this.appendPendingHighSurrogate()
+                if (intVal >= 0xd8_00 && intVal <= 0xdb_ff) {
+                  this.highSurrogate = intVal
                 } else {
-                  this.appendPendingHighSurrogate()
-                  if (intVal >= 0xd800 && intVal <= 0xdbff) {
-                    this.highSurrogate = intVal
-                  } else {
-                    this.bufferedString.appendString(String.fromCharCode(intVal))
-                  }
+                  this.bufferedString.appendString(String.fromCharCode(intVal))
                 }
               }
               this.state = TokenizerStates.STRING_DEFAULT
@@ -643,6 +643,9 @@ export default class Tokenizer {
               // whitespace
               continue
             }
+            break
+          default:
+            break
         }
 
         throw new TokenizerError(

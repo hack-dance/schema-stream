@@ -1,8 +1,8 @@
-import { SchemaStream, type SchemaStreamChunk } from "@/index"
 import { describe, expect, test } from "bun:test"
 import * as z4 from "zod"
 import * as zm from "zod/mini"
 import * as z3 from "zod3"
+import { SchemaStream, type SchemaStreamChunk } from "@/index"
 
 import { collectEmissions } from "./helpers"
 

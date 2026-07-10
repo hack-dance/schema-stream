@@ -1,6 +1,6 @@
 import {
-  SchemaStream,
   type OnKeyCompleteCallbackParams,
+  SchemaStream,
   type SchemaStreamChunk,
   type SchemaStreamOptions,
   type SchemaStreamParseOptions,

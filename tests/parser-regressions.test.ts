@@ -1,6 +1,6 @@
-import { SchemaStream } from "@/index"
 import { describe, expect, test } from "bun:test"
 import * as z from "zod"
+import { SchemaStream } from "@/index"
 
 import { collectEmissions } from "./helpers"
 
@@ -63,7 +63,7 @@ describe("stream parser regressions", () => {
 
   test("preserves escaped lone, repeated, and paired UTF-16 surrogates", async () => {
     const schema = z.object({ text: z.string() })
-    const highSurrogate = String.fromCharCode(0xd83d)
+    const highSurrogate = String.fromCharCode(0xd8_3d)
     const data = {
       text: `${highSurrogate}X|${highSurrogate}${highSurrogate}|🌊|${highSurrogate}\n`
     }

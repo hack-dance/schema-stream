@@ -1,5 +1,5 @@
-import { SchemaStream, type SnapshotPolicy } from "@/index"
 import * as z from "zod"
+import { SchemaStream, type SnapshotPolicy } from "@/index"
 
 interface BenchmarkResult {
   durationSeconds: string
@@ -12,8 +12,8 @@ interface BenchmarkResult {
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 const networkChunkSize = 64 * 1024
-const payloadSizeMb = Number(Bun.argv[2] ?? 10)
-const selectedMode = Bun.argv[3]
+const [bunExecutable, , payloadSizeArgument, selectedMode] = Bun.argv
+const payloadSizeMb = Number(payloadSizeArgument ?? 10)
 
 if (!Number.isFinite(payloadSizeMb) || payloadSizeMb <= 0) {
   throw new TypeError("Payload size must be a positive number of megabytes")
@@ -54,7 +54,9 @@ async function runPolicy({
   const readPromise = (async () => {
     while (true) {
       const output = await reader.read()
-      if (output.done) return
+      if (output.done) {
+        return
+      }
       emittedBytes += output.value.byteLength
       emittedSnapshots += 1
       finalSnapshot = output.value
@@ -95,7 +97,7 @@ if (selectedMode) {
   const results: BenchmarkResult[] = []
   for (const policy of policies) {
     const process = Bun.spawn(
-      [Bun.argv[0] as string, import.meta.path, String(payloadSizeMb), policy.mode],
+      [bunExecutable, import.meta.path, String(payloadSizeMb), policy.mode],
       { stderr: "inherit", stdout: "pipe" }
     )
     const output = await new Response(process.stdout).text()

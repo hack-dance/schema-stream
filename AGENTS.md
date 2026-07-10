@@ -17,13 +17,15 @@ Use the versions declared by the repository:
 - `bun install` installs dependencies from `bun.lock`.
 - TypeScript 7 is the authoritative development compiler.
 - Published declarations must remain consumable by supported TypeScript 5.x projects; `bun run test:packed` verifies this with TypeScript 5.9.
-- Prettier is the repository's formatter. Do not introduce a second formatter or linter without migrating the configuration, scripts, CI, and existing source in one deliberate change.
+- Ultracite with Biome is the repository's formatter and linter. Keep `biome.jsonc`, package scripts, CI, and existing source synchronized when changing formatting or lint rules.
 
 Run repository scripts through Bun:
 
 ```sh
 bun run format
 bun run format:check
+bun run lint
+bun run lint:fix
 bun run type-check
 bun run test
 bun run test:coverage
@@ -32,7 +34,7 @@ bun run test:packed
 bun run check
 ```
 
-`bun run check` is the minimum completion gate. Run `bun run build` when exports, declarations, build configuration, or package metadata change. Run `bun run test:coverage` when behavior changes.
+`bun run check` is the minimum completion gate. It includes Ultracite linting and formatting checks. Run `bun run build` when exports, declarations, build configuration, or package metadata change. Run `bun run test:coverage` when behavior changes.
 
 ## Code style and architecture
 
