@@ -73,7 +73,7 @@
     "js-tiktoken": "^1.0.7",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "latest",
-    "next": "v14.0.4",
+    "next": "v15.5.18",
     "next-assistants": "^0.0.11",
     "next-mdx-remote": "^4.4.1",
     "next-themes": "^0.2.1",
