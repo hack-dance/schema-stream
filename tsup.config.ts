@@ -2,8 +2,9 @@ import { defineConfig } from "tsup"
 
 export default defineConfig(options => {
   return {
+    clean: !options.watch,
     entry: ["src/index.ts"],
-    dts: true,
+    dts: false,
     watch: options.watch,
     sourcemap: true,
     minify: true,

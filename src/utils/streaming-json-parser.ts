@@ -38,7 +38,12 @@ export type SchemaStreamOptions<TSchema extends ZodObjectSchema> = {
 export type SchemaStreamParseOptions = {
   stringBufferSize?: number
   handleUnescapedNewLines?: boolean
+  snapshotPolicy?: SnapshotPolicy
 }
+
+/** Controls when cumulative JSON snapshots are serialized and emitted. */
+export type SnapshotPolicy =
+  { mode: "chunk" } | { mode: "value" } | { mode: "bytes"; bytes: number } | { mode: "final" }
 
 export type SchemaStreamInputChunk = string | Uint8Array
 
@@ -278,7 +283,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
       stack: StackElement[]
     }
     tokenizer: ParsedTokenInfo
-  }): void {
+  }): boolean {
     const valuePath = this.getPathFromStack(stack, key)
     this.activePath = valuePath
 
@@ -293,6 +298,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     setPathValue(this.schemaInstance, valuePath, value)
 
     this.emitCompletion()
+    return !partial && valuePath.length > 0
   }
 
   /** Returns a new schema-derived stub using this instance's primitive defaults. */
@@ -306,34 +312,91 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     ) as SchemaStreamChunk<TStubSchema>
   }
 
-  /** Creates a transform that emits the current schema-shaped JSON after every input chunk. */
-  public parse(options: SchemaStreamParseOptions = {}): TransformStream<Uint8Array, Uint8Array> {
+  private createTransform(
+    options: SchemaStreamParseOptions,
+    onSnapshot?: (snapshot: Uint8Array) => void
+  ): TransformStream<Uint8Array, Uint8Array> {
     const textEncoder = new TextEncoder()
+    const snapshotPolicy = options.snapshotPolicy ?? { mode: "chunk" }
+    if (
+      snapshotPolicy.mode === "bytes" &&
+      (!Number.isFinite(snapshotPolicy.bytes) ||
+        !Number.isInteger(snapshotPolicy.bytes) ||
+        snapshotPolicy.bytes <= 0)
+    ) {
+      throw new TypeError("snapshotPolicy.bytes must be a positive, finite integer")
+    }
     const parser = new JSONParser({
       stringBufferSize: options.stringBufferSize ?? 0,
       handleUnescapedNewLines: options.handleUnescapedNewLines ?? true
     })
+    let bytesSinceEmission = 0
+    let completedValuesSinceEmission = 0
+    let parserRevision = 0
+    let emittedRevision = -1
 
-    parser.onToken = this.handleToken.bind(this)
+    parser.onToken = parsedToken => {
+      const completedValue = this.handleToken(parsedToken)
+      parserRevision += 1
+      if (completedValue) {
+        completedValuesSinceEmission += 1
+      }
+    }
     parser.onValue = () => undefined
+
+    const emitSnapshot = (controller: TransformStreamDefaultController<Uint8Array>): void => {
+      const snapshot = textEncoder.encode(JSON.stringify(this.schemaInstance))
+      controller.enqueue(snapshot)
+      onSnapshot?.(snapshot)
+      bytesSinceEmission = 0
+      completedValuesSinceEmission = 0
+      emittedRevision = parserRevision
+    }
+
+    const shouldEmit = (): boolean => {
+      if (snapshotPolicy.mode === "chunk") {
+        return true
+      }
+      if (snapshotPolicy.mode === "value") {
+        return completedValuesSinceEmission > 0
+      }
+      if (snapshotPolicy.mode === "bytes") {
+        return bytesSinceEmission >= snapshotPolicy.bytes
+      }
+      return false
+    }
 
     return new TransformStream<Uint8Array, Uint8Array>({
       transform: (chunk, controller): void => {
         try {
           parser.write(chunk)
-          controller.enqueue(textEncoder.encode(JSON.stringify(this.schemaInstance)))
+          bytesSinceEmission += chunk.byteLength
+          if (shouldEmit()) {
+            emitSnapshot(controller)
+          }
         } catch (error) {
           controller.error(error)
         }
       },
-      flush: (): void => {
+      flush: controller => {
         if (!parser.isEnded) {
           parser.end()
+        }
+        if (snapshotPolicy.mode !== "chunk" && emittedRevision !== parserRevision) {
+          emitSnapshot(controller)
         }
         this.activePath = []
         this.emitCompletion()
       }
     })
+  }
+
+  /**
+   * Creates a transform that emits cumulative JSON snapshots at the selected cadence.
+   * Omitting `snapshotPolicy` preserves the existing one-snapshot-per-input-chunk behavior.
+   */
+  public parse(options: SchemaStreamParseOptions = {}): TransformStream<Uint8Array, Uint8Array> {
+    return this.createTransform(options)
   }
 
   /**
@@ -345,14 +408,22 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     source: SchemaStreamSource<TChunk>,
     options: SchemaStreamParseOptions = {}
   ): AsyncGenerator<SchemaStreamChunk<TSchema>, void, void> {
+    const decoder = new TextDecoder()
+    const outputQueue: SchemaStreamChunk<TSchema>[] = []
+    const transform = this.createTransform(options, snapshot => {
+      outputQueue.push(JSON.parse(decoder.decode(snapshot)) as SchemaStreamChunk<TSchema>)
+    })
     const sourceHandle = openSource(source)
-    const transform = this.parse(options)
     const reader = transform.readable.getReader()
     const writer = transform.writable.getWriter()
     const encoder = new TextEncoder()
-    const decoder = new TextDecoder()
     let sourceDone = false
     let parserDone = false
+    const outputPump = (async () => {
+      while (!(await reader.read()).done) {
+        // Reading relieves TransformStream backpressure; createTransform owns snapshot decoding.
+      }
+    })()
 
     try {
       while (true) {
@@ -364,18 +435,16 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
 
         const input: SchemaStreamInputChunk = next.value
         const bytes = typeof input === "string" ? encoder.encode(input) : input
-        const [, output] = await Promise.all([writer.write(bytes), reader.read()])
-
-        if (output.done) {
-          throw new Error("SchemaStream parser ended before its input source")
+        await writer.write(bytes)
+        while (outputQueue.length > 0) {
+          yield outputQueue.shift() as SchemaStreamChunk<TSchema>
         }
-
-        yield JSON.parse(decoder.decode(output.value)) as SchemaStreamChunk<TSchema>
       }
 
-      const [, output] = await Promise.all([writer.close(), reader.read()])
-      if (!output.done) {
-        throw new Error("SchemaStream parser emitted an unexpected final chunk")
+      await writer.close()
+      await outputPump
+      while (outputQueue.length > 0) {
+        yield outputQueue.shift() as SchemaStreamChunk<TSchema>
       }
       parserDone = true
     } finally {
@@ -385,6 +454,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
         cleanup.push(writer.abort(), reader.cancel())
       }
 
+      cleanup.push(outputPump.catch(() => undefined))
       await Promise.allSettled(cleanup)
       writer.releaseLock()
       reader.releaseLock()

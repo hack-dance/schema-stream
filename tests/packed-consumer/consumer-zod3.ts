@@ -24,12 +24,12 @@ const input = new ReadableStream<Uint8Array>({
 })
 const emissions: unknown[] = []
 
-for await (const partial of parser.iterate(input)) {
+for await (const partial of parser.iterate(input, { snapshotPolicy: { mode: "value" } })) {
   emissions.push(partial)
 }
 
-if (!emissions.some(value => JSON.stringify(value).includes('"title":"hel"'))) {
-  throw new Error("schema-stream packed Zod 3 progressive emission mismatch")
+if (emissions.length !== 2 || !JSON.stringify(emissions.at(-1)).includes('"count":2')) {
+  throw new Error("schema-stream packed Zod 3 value-policy emission mismatch")
 }
 
 console.log("packed Zod 3 types and runtime passed")

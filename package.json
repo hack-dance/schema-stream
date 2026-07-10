@@ -49,7 +49,8 @@
   },
   "packageManager": "bun@1.3.14",
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --project tsconfig.build.json",
+    "check": "bun run format:check && bun run type-check && bun run test && bun run test:packed",
     "changeset": "changeset",
     "clean": "rm -rf coverage dist node_modules",
     "dev": "tsup --watch",
@@ -71,7 +72,7 @@
     "ai": "7.0.19",
     "prettier": "^3.9.5",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
+    "typescript": "7.0.2",
     "zod": "^4.4.3",
     "zod3": "npm:zod@^3.25.0"
   },

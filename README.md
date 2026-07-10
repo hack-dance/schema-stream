@@ -55,6 +55,17 @@ for await (const partial of parser.iterate(response.body!)) {
 across byte chunks, cancels the source when iteration ends early, and yields an independent snapshot
 for every input chunk.
 
+Snapshot cadence is opt-in and shared with `parse()`. Omitting the option retains one snapshot per
+input chunk:
+
+```typescript
+parser.iterate(source, { snapshotPolicy: { mode: "value" } })
+parser.iterate(source, { snapshotPolicy: { mode: "bytes", bytes: 256 * 1024 } })
+parser.iterate(source, { snapshotPolicy: { mode: "final" } })
+```
+
+See [snapshot policies](./docs/snapshot-policies.md) for exact semantics and performance tradeoffs.
+
 ## OpenAI Agents SDK
 
 Pass the Agents SDK text stream directly to `iterate()`:
@@ -180,18 +191,23 @@ for await (const bytes of snapshots) {
 }
 ```
 
+`parse()` accepts the same `snapshotPolicy` option as `iterate()`.
+
 ## Development
 
 ```bash
+mise install
 bun install
-bun run type-check
-bun run test:coverage
-bun run build
-bun run test:packed
+bun run check
 ```
 
+`mise.toml` pins Bun 1.3.14 and the current Node 24 release. Maintainers type-check and emit
+declarations with TypeScript 7.0.2. TypeScript is a development-only dependency, so installing
+`schema-stream` does not install or require TypeScript 7.
+
 `test:packed` installs the generated tarball into clean consumers and verifies ESM, CommonJS,
-Zod 4/Mini, Zod 3, OpenAI Agents SDK, and Vercel AI SDK compatibility without contacting a model.
+Zod 4/Mini, Zod 3, OpenAI Agents SDK, and Vercel AI SDK compatibility with TypeScript 5.9 without
+contacting a model. This protects the declaration surface from accidental TS7-only syntax.
 
 ## License
 

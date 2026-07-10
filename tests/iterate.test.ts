@@ -1,4 +1,4 @@
-import { SchemaStream, type SchemaStreamChunk } from "@/index"
+import { SchemaStream, type SchemaStreamChunk, type SnapshotPolicy } from "@/index"
 import { describe, expect, test } from "bun:test"
 import * as z from "zod"
 
@@ -13,6 +13,43 @@ async function collect<TSchema extends z.ZodObject>(
 }
 
 describe("SchemaStream.iterate", () => {
+  test("applies opt-in snapshot policies without changing the default", async () => {
+    const schema = z.object({ first: z.string(), second: z.number() })
+    const expected = { first: "streaming", second: 2 }
+    const json = JSON.stringify(expected)
+    const policies: Array<{ expectedCount: number; snapshotPolicy?: SnapshotPolicy }> = [
+      { expectedCount: json.length },
+      { expectedCount: json.length, snapshotPolicy: { mode: "chunk" } },
+      { expectedCount: 2, snapshotPolicy: { mode: "value" } },
+      { expectedCount: Math.ceil(json.length / 8), snapshotPolicy: { bytes: 8, mode: "bytes" } },
+      { expectedCount: 1, snapshotPolicy: { mode: "final" } }
+    ]
+
+    for (const { expectedCount, snapshotPolicy } of policies) {
+      const source = (async function* () {
+        for (const character of json) {
+          yield character
+        }
+      })()
+      const emissions = await collect(new SchemaStream(schema).iterate(source, { snapshotPolicy }))
+
+      expect(emissions).toHaveLength(expectedCount)
+      expect(emissions.at(-1)).toEqual(expected)
+    }
+  })
+
+  test("rejects invalid policies before locking readable sources", async () => {
+    const source = new ReadableStream<string>()
+    const iterator = new SchemaStream(z.object({ value: z.string() })).iterate(source, {
+      snapshotPolicy: { bytes: 0, mode: "bytes" }
+    })
+
+    await expect(iterator.next()).rejects.toThrow(
+      "snapshotPolicy.bytes must be a positive, finite integer"
+    )
+    expect(source.locked).toBe(false)
+  })
+
   test("consumes string ReadableStreams with progressive nested emissions", async () => {
     const schema = z.object({
       title: z.string(),
