@@ -179,4 +179,54 @@ describe("snapshot policies", () => {
       ).rejects.toThrow('Unexpected "g"')
     }
   })
+
+  test("parses every byte split, including UTF-8 boundaries, under every policy", async () => {
+    const expected = { first: 'héllo 🌊 "quoted" \\ escaped', second: -1250.5 }
+    const encoded = encoder.encode(JSON.stringify(expected))
+    const policies: SnapshotPolicy[] = [
+      { mode: "chunk" },
+      { mode: "value" },
+      { bytes: 7, mode: "bytes" },
+      { mode: "final" }
+    ]
+
+    for (const snapshotPolicy of policies) {
+      for (let split = 1; split < encoded.length; split += 1) {
+        const snapshots = await collectSnapshots({
+          chunks: [encoded.slice(0, split), encoded.slice(split)],
+          options: { snapshotPolicy }
+        })
+
+        expect(snapshots.at(-1)).toEqual(expected)
+      }
+    }
+  })
+
+  test("parses multi-megabyte JSON with one final snapshot", async () => {
+    const schema = z.object({
+      content: z.string(),
+      records: z.array(z.object({ id: z.number(), active: z.boolean() }))
+    })
+    const expected = {
+      content: "x".repeat(2 * 1024 * 1024),
+      records: Array.from({ length: 1_000 }, (_, id) => ({ id, active: id % 2 === 0 }))
+    }
+    const chunks = splitBytes(JSON.stringify(expected), 64 * 1024)
+    const source = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk)
+        controller.close()
+      }
+    })
+    const outputs = source.pipeThrough(
+      new SchemaStream(schema).parse({ snapshotPolicy: { mode: "final" } })
+    )
+    const snapshots: unknown[] = []
+
+    for await (const output of outputs) {
+      snapshots.push(JSON.parse(decoder.decode(output)))
+    }
+
+    expect(snapshots).toEqual([expected])
+  })
 })

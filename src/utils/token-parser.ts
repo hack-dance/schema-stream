@@ -52,7 +52,7 @@ export const enum TokenParserState {
   SEPARATOR
 }
 
-function TokenParserStateToString(state: TokenParserState): string {
+function tokenParserStateToString(state: TokenParserState): string {
   return ["VALUE", "KEY", "COLON", "COMMA", "ENDED", "ERROR", "SEPARATOR"][state]
 }
 
@@ -71,8 +71,7 @@ const defaultOpts: TokenParserOptions = {
 export class TokenParserError extends Error {
   constructor(message: string) {
     super(message)
-    // Typescript is broken. This is a workaround
-    Object.setPrototypeOf(this, TokenParserError.prototype)
+    Object.setPrototypeOf(this, new.target.prototype)
   }
 }
 
@@ -102,7 +101,7 @@ export default class TokenParser {
       })
     }
 
-    this.keepStack = true
+    this.keepStack = opts.keepStack ?? true
     this.separator = opts.separator
   }
 
@@ -153,8 +152,11 @@ export default class TokenParser {
 
   private emit(value: JsonPrimitive | JsonStruct, emit: boolean): void {
     if (!this.keepStack && this.value && this.stack.every(item => !item.emit)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (this.value as JsonStruct as any)[this.key as string | number]
+      if (Array.isArray(this.value) && typeof this.key === "number") {
+        delete this.value[this.key]
+      } else if (!Array.isArray(this.value) && typeof this.key === "string") {
+        delete this.value[this.key]
+      }
     }
 
     if (emit) {
@@ -303,11 +305,10 @@ export default class TokenParser {
       throw new TokenParserError(
         `Unexpected ${TokenType[token]} (${JSON.stringify(
           value
-        )}) in state ${TokenParserStateToString(this.state)}`
+        )}) in state ${tokenParserStateToString(this.state)}`
       )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      this.error(err)
+    } catch (error: unknown) {
+      this.error(error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -326,7 +327,7 @@ export default class TokenParser {
     ) {
       this.error(
         new Error(
-          `Parser ended in mid-parsing (state: ${TokenParserStateToString(
+          `Parser ended in mid-parsing (state: ${tokenParserStateToString(
             this.state
           )}). Either not all the data was received or the data was invalid.`
         )
@@ -337,7 +338,6 @@ export default class TokenParser {
     }
   }
 
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   public onValue(_parsedElementInfo: ParsedElementInfo): void {
     throw new TokenParserError('Can\'t emit data before the "onValue" callback has been set up.')
   }

@@ -13,6 +13,8 @@ describe("schema-derived stubs", () => {
       count: z4.number(),
       active: z4.boolean(),
       state: z4.enum(["pending", "ready"]),
+      ambiguous: z4.union([z4.string(), z4.number()]),
+      nullable: z4.string().nullable(),
       nested: z4
         .object({
           label: z4.string(),
@@ -46,6 +48,8 @@ describe("schema-derived stubs", () => {
       count: 0,
       active: false,
       state: null,
+      ambiguous: null,
+      nullable: null,
       nested: { label: "loading", enabled: false },
       tags: [],
       properties: {},
@@ -61,6 +65,8 @@ describe("schema-derived stubs", () => {
       count: z3.number(),
       active: z3.boolean(),
       state: z3.enum(["pending", "ready"]),
+      ambiguous: z3.union([z3.string(), z3.number()]),
+      nullable: z3.string().nullable(),
       nested: z3
         .object({
           label: z3.string(),
@@ -81,6 +87,8 @@ describe("schema-derived stubs", () => {
       count: -1,
       active: true,
       state: null,
+      ambiguous: null,
+      nullable: null,
       nested: { label: "loading", enabled: true },
       tags: [],
       properties: {},

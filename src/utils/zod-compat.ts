@@ -1,18 +1,23 @@
 import type * as z4 from "zod/v4/core"
 
+/** Minimal structural contract used to support a Zod 3 schema without importing its runtime. */
 export type Zod3Schema = {
   readonly _def: unknown
   readonly _input: unknown
   readonly _output: unknown
 }
 
+/** Zod 3 object schema contract required for shape inspection and type inference. */
 export type Zod3ObjectSchema = Zod3Schema & {
   readonly shape: Readonly<Record<string, Zod3Schema>>
 }
 
+/** Schema versions accepted by SchemaStream's compatibility layer. */
 export type ZodSchema = Zod3Schema | z4.$ZodType
+/** Object schemas accepted by the public `SchemaStream` constructor. */
 export type ZodObjectSchema = Zod3ObjectSchema | z4.$ZodObject
 
+/** Infers the input value represented by a supported Zod schema. */
 export type SchemaInput<TSchema extends ZodSchema> = TSchema extends {
   _zod: z4.$ZodType["_zod"]
 }
@@ -21,6 +26,7 @@ export type SchemaInput<TSchema extends ZodSchema> = TSchema extends {
     ? TSchema["_input"]
     : never
 
+/** Recursively makes streamed fields optional and primitive values nullable. */
 export type SchemaStreamValue<TValue> = unknown extends TValue
   ? unknown
   : TValue extends readonly (infer TItem)[]
@@ -29,10 +35,12 @@ export type SchemaStreamValue<TValue> = unknown extends TValue
       ? { [TKey in keyof TValue]?: SchemaStreamValue<TValue[TKey]> }
       : TValue | null
 
+/** Progressive, schema-shaped value yielded for a supported object schema. */
 export type SchemaStreamChunk<TSchema extends ZodObjectSchema> = SchemaStreamValue<
   SchemaInput<TSchema>
 >
 
+/** Field-level placeholder overrides accepted when creating schema-derived stubs. */
 export type SchemaStreamDefaultData<TSchema extends ZodObjectSchema> = Partial<
   SchemaStreamChunk<TSchema>
 >

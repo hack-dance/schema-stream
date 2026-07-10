@@ -49,7 +49,8 @@ characters do not repeatedly serialize the entire accumulated object.
 
 Emits when source bytes received since the previous snapshot meet or exceed the positive integer
 threshold. Thresholds are evaluated at source-chunk boundaries; SchemaStream does not split input
-chunks. A final tail smaller than the threshold is still emitted.
+chunks. At flush, parser state not represented by the previous snapshot is emitted below the
+threshold; structural-only trailing bytes do not create a duplicate snapshot.
 
 ### `final`
 
@@ -65,7 +66,8 @@ validated output from the producing SDK.
 
 ## Errors, callbacks, and backpressure
 
-- Invalid byte thresholds throw synchronously.
+- `parse()` rejects invalid byte thresholds synchronously. `iterate()` rejects on first advancement,
+  before locking the source.
 - Malformed and truncated JSON reject under every policy.
 - `onKeyComplete` cadence is independent of snapshot cadence.
 - `iterate()` preserves source backpressure at emission boundaries and cancels its source when the
@@ -80,7 +82,7 @@ validated output from the producing SDK.
 Run the policy comparison with an optional payload size in megabytes:
 
 ```bash
-bun tests/snapshot-policy.benchmark.ts 25
+bun run benchmark:snapshots 25
 ```
 
 The benchmark combines one long string with 10,000 nested records and reports source throughput,

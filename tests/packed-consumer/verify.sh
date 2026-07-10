@@ -16,6 +16,11 @@ if [[ -z "$TARBALL" ]]; then
   exit 1
 fi
 
+if [[ "$(tar -tzf "$TARBALL")" != *"package/docs/snapshot-policies.md"* ]]; then
+  echo "schema-stream tarball is missing snapshot policy documentation" >&2
+  exit 1
+fi
+
 cp "$FIXTURE/consumer.ts" "$FIXTURE/consumer.cjs" "$FIXTURE/tsconfig.json" "$TEMP_DIR/zod4-consumer/"
 cd "$TEMP_DIR/zod4-consumer"
 npm init -y >/dev/null

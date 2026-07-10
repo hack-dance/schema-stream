@@ -12,12 +12,14 @@ export interface StringBuilder {
   byteLength: number
   appendChar: (char: number) => void
   appendBuf: (buf: Uint8Array, start?: number, end?: number) => void
+  appendString: (value: string) => void
   reset: () => void
   toString: () => string
 }
 
 export class NonBufferedString implements StringBuilder {
   private decoder = new TextDecoder("utf-8")
+  private encoder = new TextEncoder()
   private string = ""
   private onIncrementalString?: (str: string) => void
 
@@ -39,8 +41,14 @@ export class NonBufferedString implements StringBuilder {
     this.update()
   }
 
+  public appendString(value: string): void {
+    this.string += value
+    this.byteLength += this.encoder.encode(value).byteLength
+    this.update()
+  }
+
   private update(): void {
-    if (this.onIncrementalString) this.onIncrementalString(this.toString())
+    if (this.onIncrementalString) this.onIncrementalString(this.string)
   }
 
   public reset(): void {
@@ -55,6 +63,7 @@ export class NonBufferedString implements StringBuilder {
 
 export class BufferedString implements StringBuilder {
   private decoder = new TextDecoder("utf-8")
+  private encoder = new TextEncoder()
   private buffer: Uint8Array
   private bufferOffset = 0
   private string = ""
@@ -77,19 +86,35 @@ export class BufferedString implements StringBuilder {
     const size = end - start
     if (this.bufferOffset + size > this.buffer.length) this.flushStringBuffer()
 
+    if (size > this.buffer.length) {
+      this.string += this.decoder.decode(buf.subarray(start, end))
+      this.byteLength += size
+      this.update()
+      return
+    }
+
     this.buffer.set(buf.subarray(start, end), this.bufferOffset)
     this.bufferOffset += size
     this.byteLength += size
   }
 
+  public appendString(value: string): void {
+    this.flushStringBuffer()
+    this.string += value
+    this.byteLength += this.encoder.encode(value).byteLength
+    this.update()
+  }
+
   private flushStringBuffer(): void {
+    if (this.bufferOffset === 0) return
+
     this.string += this.decoder.decode(this.buffer.subarray(0, this.bufferOffset))
     this.bufferOffset = 0
     this.update()
   }
 
   private update(): void {
-    if (this.onIncrementalString) this.onIncrementalString(this.toString())
+    if (this.onIncrementalString) this.onIncrementalString(this.string)
   }
 
   public reset(): void {
