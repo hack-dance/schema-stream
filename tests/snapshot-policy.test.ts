@@ -54,6 +54,25 @@ describe("snapshot policies", () => {
     expect(explicit).toHaveLength(chunks.length)
   })
 
+  test("does not emit a schema stub when the source is empty", async () => {
+    const policies: Array<SnapshotPolicy | undefined> = [
+      undefined,
+      { mode: "chunk" },
+      { mode: "value" },
+      { bytes: 8, mode: "bytes" },
+      { mode: "final" }
+    ]
+
+    for (const snapshotPolicy of policies) {
+      const snapshots = await collectSnapshots({
+        chunks: [],
+        options: { snapshotPolicy }
+      })
+
+      expect(snapshots).toEqual([])
+    }
+  })
+
   test("emits at completed-value boundaries", async () => {
     const json = JSON.stringify({ first: "streaming", second: 2 })
 

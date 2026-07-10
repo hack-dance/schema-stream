@@ -38,6 +38,28 @@ describe("SchemaStream.iterate", () => {
     }
   })
 
+  test("does not yield a schema stub when the source is empty", async () => {
+    const schema = z.object({ value: z.string() })
+    const policies: Array<SnapshotPolicy | undefined> = [
+      undefined,
+      { mode: "chunk" },
+      { mode: "value" },
+      { bytes: 8, mode: "bytes" },
+      { mode: "final" }
+    ]
+
+    for (const snapshotPolicy of policies) {
+      const source = new ReadableStream<string>({
+        start(controller) {
+          controller.close()
+        }
+      })
+      const emissions = await collect(new SchemaStream(schema).iterate(source, { snapshotPolicy }))
+
+      expect(emissions).toEqual([])
+    }
+  })
+
   test("rejects invalid policies before locking readable sources", async () => {
     const source = new ReadableStream<string>()
     const iterator = new SchemaStream(z.object({ value: z.string() })).iterate(source, {

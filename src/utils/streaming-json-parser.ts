@@ -391,6 +391,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     let completedValuesSinceEmission = 0
     let parserRevision = 0
     let emittedRevision = -1
+    let hasParsedValue = false
 
     parser.onToken = parsedToken => {
       const completedValue = this.handleToken(parsedToken)
@@ -399,7 +400,9 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
         completedValuesSinceEmission += 1
       }
     }
-    parser.onValue = () => undefined
+    parser.onValue = () => {
+      hasParsedValue = true
+    }
 
     const emitSnapshot = (controller: TransformStreamDefaultController<Uint8Array>): void => {
       const snapshot = textEncoder.encode(JSON.stringify(this.schemaInstance))
@@ -439,7 +442,11 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
         if (!parser.isEnded) {
           parser.end()
         }
-        if (snapshotPolicy.mode !== "chunk" && emittedRevision !== parserRevision) {
+        if (
+          snapshotPolicy.mode !== "chunk" &&
+          hasParsedValue &&
+          emittedRevision !== parserRevision
+        ) {
           emitSnapshot(controller)
         }
         this.activePath = []
