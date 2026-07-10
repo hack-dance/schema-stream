@@ -72,6 +72,17 @@ describe("stream parser regressions", () => {
     expect(streamError).toBeInstanceOf(Error)
   })
 
+  test("rejects non-whitespace chunks after the top-level value completes", async () => {
+    const schema = z.object({ value: z.number() })
+
+    await expect(
+      collectEmissions({
+        schema,
+        chunks: ['{"value":1}', "trailing garbage"]
+      })
+    ).rejects.toThrow('Unexpected "t"')
+  })
+
   test("keeps prototype-named paths inside the parsed result graph", async () => {
     const schema = z.object({ safe: z.string() })
     const parser = new SchemaStream(schema)

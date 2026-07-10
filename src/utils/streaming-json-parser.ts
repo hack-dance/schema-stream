@@ -320,9 +320,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     return new TransformStream<Uint8Array, Uint8Array>({
       transform: (chunk, controller): void => {
         try {
-          if (!parser.isEnded) {
-            parser.write(chunk)
-          }
+          parser.write(chunk)
           controller.enqueue(textEncoder.encode(JSON.stringify(this.schemaInstance)))
         } catch (error) {
           controller.error(error)
