@@ -1,0 +1,54 @@
+import { describe, expect, test } from "bun:test"
+import { join } from "node:path"
+
+const workflowDirectory = join(import.meta.dir, "..", ".github", "workflows")
+const workflowNames = ["ci.yml", "publish.yml", "release-pr.yml"] as const
+
+async function readWorkflow(name: (typeof workflowNames)[number]): Promise<string> {
+  return Bun.file(join(workflowDirectory, name)).text()
+}
+
+describe("GitHub Actions security", () => {
+  test("pins every action to an immutable commit", async () => {
+    for (const name of workflowNames) {
+      const workflow = await readWorkflow(name)
+      const actionReferences = [...workflow.matchAll(/^\s*uses:\s*([^\s#]+)(?:\s+#.*)?$/gm)]
+
+      expect(actionReferences.length).toBeGreaterThan(0)
+      for (const [, reference] of actionReferences) {
+        expect(reference).toMatch(/^[^@\s]+@[0-9a-f]{40}$/)
+      }
+    }
+  })
+
+  test("keeps pull-request CI read-only and secret-free", async () => {
+    const workflow = await readWorkflow("ci.yml")
+
+    expect(workflow).toMatch(/^\s*pull_request:\s*$/m)
+    expect(workflow).not.toContain("pull_request_target")
+    expect(workflow).toMatch(/^permissions:\n\s+contents: read$/m)
+    expect(workflow).not.toContain("secrets.")
+    expect(workflow.match(/persist-credentials: false/g)).toHaveLength(2)
+  })
+
+  test("limits publishing to the merged canonical release PR", async () => {
+    const workflow = await readWorkflow("publish.yml")
+
+    expect(workflow).toContain("github.repository == 'hack-dance/schema-stream'")
+    expect(workflow).toContain("github.event.pull_request.merged == true")
+    expect(workflow).toContain("github.base_ref == 'main'")
+    expect(workflow).toContain("github.event.pull_request.head.repo.full_name == github.repository")
+    expect(workflow).toContain("github.head_ref == 'changeset-release/main'")
+    expect(workflow).toMatch(/^\s+environment: PUBLISH$/m)
+    expect(workflow).toMatch(/^\s+permissions:\n\s+contents: read$/m)
+    expect(workflow).toContain("persist-credentials: false")
+    expect(workflow).not.toContain("contents: write")
+  })
+
+  test("scopes release automation to the canonical repository", async () => {
+    const workflow = await readWorkflow("release-pr.yml")
+
+    expect(workflow).toContain("if: github.repository == 'hack-dance/schema-stream'")
+    expect(workflow).toMatch(/^permissions:\n\s+contents: write\n\s+pull-requests: write$/m)
+  })
+})
