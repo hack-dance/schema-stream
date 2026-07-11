@@ -39,7 +39,7 @@ describe("GitHub Actions security", () => {
     expect(workflow.match(persistedCredentialsPattern)).toHaveLength(2)
   })
 
-  test("limits trusted publishing to the merged canonical release PR", async () => {
+  test("limits trusted publishing to canonical release paths", async () => {
     const workflow = await readWorkflow("publish.yml")
 
     expect(workflow).toContain("github.repository == 'hack-dance/schema-stream'")
@@ -47,6 +47,8 @@ describe("GitHub Actions security", () => {
     expect(workflow).toContain("github.base_ref == 'main'")
     expect(workflow).toContain("github.event.pull_request.head.repo.full_name == github.repository")
     expect(workflow).toContain("github.head_ref == 'changeset-release/main'")
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'")
+    expect(workflow).toContain("github.ref == 'refs/heads/main'")
     expect(workflow).toMatch(publishEnvironmentPattern)
     expect(workflow).toMatch(publishPermissionsPattern)
     expect(workflow).toContain("persist-credentials: false")
