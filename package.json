@@ -1,6 +1,6 @@
 {
   "name": "schema-stream",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Progressively parse streamed JSON into typed, schema-shaped snapshots",
   "author": "Dimitri Kennedy <dimitri@sick.email> (https://hack.dance)",
   "license": "MIT",
