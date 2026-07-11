@@ -9,7 +9,7 @@ const pullRequestTriggerPattern = /^\s*pull_request:\s*$/m
 const readOnlyPermissionsPattern = /^permissions:\n\s+contents: read$/m
 const persistedCredentialsPattern = /persist-credentials: false/g
 const publishEnvironmentPattern = /^\s+environment: PUBLISH$/m
-const publishPermissionsPattern = /^\s+permissions:\n\s+contents: read$/m
+const publishPermissionsPattern = /^\s+permissions:\n\s+contents: read\n\s+id-token: write$/m
 const releasePermissionsPattern = /^permissions:\n\s+contents: write\n\s+pull-requests: write$/m
 
 function readWorkflow(name: (typeof workflowNames)[number]): Promise<string> {
@@ -39,7 +39,7 @@ describe("GitHub Actions security", () => {
     expect(workflow.match(persistedCredentialsPattern)).toHaveLength(2)
   })
 
-  test("limits publishing to the merged canonical release PR", async () => {
+  test("limits trusted publishing to the merged canonical release PR", async () => {
     const workflow = await readWorkflow("publish.yml")
 
     expect(workflow).toContain("github.repository == 'hack-dance/schema-stream'")
@@ -51,6 +51,9 @@ describe("GitHub Actions security", () => {
     expect(workflow).toMatch(publishPermissionsPattern)
     expect(workflow).toContain("persist-credentials: false")
     expect(workflow).not.toContain("contents: write")
+    expect(workflow).not.toContain("NODE_AUTH_TOKEN")
+    expect(workflow).not.toContain("NPM_TOKEN")
+    expect(workflow).not.toContain("secrets.")
   })
 
   test("scopes release automation to the canonical repository", async () => {

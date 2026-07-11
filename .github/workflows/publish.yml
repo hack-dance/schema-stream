@@ -21,6 +21,7 @@ jobs:
     environment: PUBLISH
     permissions:
       contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -52,5 +53,3 @@ jobs:
 
       - name: Publish package
         run: bun run release
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
