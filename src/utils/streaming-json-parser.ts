@@ -1,5 +1,6 @@
 import JSONParser from "./json-parser"
 import type {
+  ParsedElementInfo,
   ParsedTokenInfo,
   StackElement,
   TokenParserMode,
@@ -137,6 +138,22 @@ function setPathValue(target: Record<string, unknown>, path: SchemaPath, value: 
   if (finalSegment !== undefined) {
     setOwnValue(current, finalSegment, value)
   }
+}
+
+function getPathValue(target: Record<string, unknown>, path: SchemaPath): unknown {
+  let current: unknown = target
+
+  for (const segment of path) {
+    if (segment === undefined) {
+      continue
+    }
+    if (typeof current !== "object" || current === null || !hasOwn(current, segment)) {
+      return
+    }
+    current = (current as JsonContainer)[segment]
+  }
+
+  return current
 }
 
 function getPathKey(path: SchemaPath): string {
@@ -323,6 +340,44 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     })
   }
 
+  private recordCompletedPath(valuePath: SchemaPath): void {
+    if (valuePath.length === 0) {
+      return
+    }
+
+    const pathKey = getPathKey(valuePath)
+    if (!this.completedPathKeys.has(pathKey)) {
+      this.completedPathKeys.add(pathKey)
+      this.completedPaths.push([...valuePath])
+    }
+  }
+
+  private handleEmptyContainer({ key, stack, value }: ParsedElementInfo): boolean {
+    const emptyArray = Array.isArray(value) && value.length === 0
+    const emptyObject = isObject(value) && Object.keys(value).length === 0
+    if (!(emptyArray || emptyObject)) {
+      return false
+    }
+
+    const valuePath = this.getPathFromStack(stack, key)
+    const existingValue = getPathValue(this.schemaInstance, valuePath)
+    const alreadyPresent = emptyArray
+      ? Array.isArray(existingValue) && existingValue.length === 0
+      : isObject(existingValue) && Object.keys(existingValue).length === 0
+    if (alreadyPresent) {
+      return false
+    }
+
+    if (valuePath.length > 0) {
+      this.activePath = valuePath
+      this.recordCompletedPath(valuePath)
+      setPathValue(this.schemaInstance, valuePath, emptyArray ? [] : {})
+      this.emitCompletion()
+    }
+
+    return true
+  }
+
   private handleToken({
     parser: { key, stack },
     tokenizer: { value, partial }
@@ -339,11 +394,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     this.activePath = valuePath
 
     if (!partial && valuePath.length > 0) {
-      const pathKey = getPathKey(valuePath)
-      if (!this.completedPathKeys.has(pathKey)) {
-        this.completedPathKeys.add(pathKey)
-        this.completedPaths.push([...valuePath])
-      }
+      this.recordCompletedPath(valuePath)
     }
 
     setPathValue(this.schemaInstance, valuePath, value)
@@ -400,8 +451,11 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
         completedValuesSinceEmission += 1
       }
     }
-    parser.onValue = () => {
+    parser.onValue = parsedValue => {
       hasParsedValue = true
+      if (this.handleEmptyContainer(parsedValue)) {
+        parserRevision += 1
+      }
     }
 
     const emitSnapshot = (controller: TransformStreamDefaultController<Uint8Array>): void => {

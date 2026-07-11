@@ -147,6 +147,39 @@ describe("snapshot policies", () => {
     }
   })
 
+  test("preserves nested empty containers in every mode", async () => {
+    const schema = z.object({
+      items: z.array(z.unknown()),
+      metadata: z.record(z.string(), z.unknown())
+    })
+    const expected = {
+      items: [{}, []],
+      metadata: { emptyArray: [], emptyObject: {} }
+    }
+    const json = encoder.encode(JSON.stringify(expected))
+    const policies: SnapshotPolicy[] = [
+      { mode: "chunk" },
+      { mode: "value" },
+      { bytes: 1024, mode: "bytes" },
+      { mode: "final" }
+    ]
+
+    for (const snapshotPolicy of policies) {
+      const outputs = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(json)
+          controller.close()
+        }
+      }).pipeThrough(new SchemaStream(schema).parse({ snapshotPolicy }))
+      const snapshots: unknown[] = []
+      for await (const output of outputs) {
+        snapshots.push(JSON.parse(decoder.decode(output)))
+      }
+
+      expect(snapshots.at(-1)).toEqual(expected)
+    }
+  })
+
   test("rejects invalid byte thresholds synchronously", () => {
     const parser = new SchemaStream(z.object({ value: z.string() }))
 

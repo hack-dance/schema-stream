@@ -79,6 +79,27 @@ describe("stream parser regressions", () => {
     }
   })
 
+  test("preserves nested empty containers and their completion paths", async () => {
+    const schema = z.object({
+      items: z.array(z.unknown()),
+      metadata: z.record(z.string(), z.unknown())
+    })
+    const data = {
+      items: [{}, []],
+      metadata: { emptyArray: [], emptyObject: {} }
+    }
+    const { completions, emissions } = await collectEmissions({
+      schema,
+      chunks: [JSON.stringify(data)]
+    })
+
+    expect(emissions).toEqual([data])
+    expect(completions).toContainEqual(
+      expect.objectContaining({ activePath: ["metadata", "emptyObject"] })
+    )
+    expect(completions).toContainEqual(expect.objectContaining({ activePath: ["items", 0] }))
+  })
+
   test("preserves large progressively parsed strings", async () => {
     const schema = z.object({ text: z.string() })
     const data = { text: "a".repeat(64 * 1024) }
