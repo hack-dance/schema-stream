@@ -19,6 +19,28 @@ Snapshots are progressive parser output, not validation results. `schema-stream`
 types and initial placeholders, but it does not validate partial or final values. Validate the
 settled value with your schema or use the producing SDK's validated result.
 
+![Terminal demo of schema-stream filling a typed object as JSON arrives](https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif)
+
+## One stream, many snapshots
+
+Every value yielded by `iterate()` is a complete, independent snapshot. If this JSON arrives in
+small chunks:
+
+```json
+{"title":"Hello","details":{"score":42}}
+```
+
+the snapshots can progress like this:
+
+```json
+{"title":"Hel","details":{"score":null}}
+{"title":"Hello","details":{"score":null}}
+{"title":"Hello","details":{"score":42}}
+```
+
+The default cadence follows the source chunks. Opt-in snapshot policies can instead emit at
+completed-value boundaries, byte thresholds, or only once at the end.
+
 ## Install
 
 ```bash
