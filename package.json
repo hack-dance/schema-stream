@@ -4,7 +4,7 @@
   "description": "Progressively parse streamed JSON into typed, schema-shaped snapshots",
   "author": "Dimitri Kennedy <dimitri@sick.email> (https://hack.dance)",
   "license": "MIT",
-  "homepage": "https://github.com/hack-dance/schema-stream#readme",
+  "homepage": "https://hack.dance",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hack-dance/schema-stream.git"
