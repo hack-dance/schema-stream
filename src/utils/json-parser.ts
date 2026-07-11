@@ -10,6 +10,14 @@ import TokenParser, {
 import TokenType from "./token-type"
 import Tokenizer, { type TokenizerOptions } from "./tokenizer"
 
+/**
+ * Identifies primitive value tokens without allocating a lookup collection.
+ * This range check depends on `TRUE` through `NUMBER` remaining contiguous in `TokenType`.
+ */
+function isValueToken(token: TokenType): boolean {
+  return token >= TokenType.TRUE && token <= TokenType.NUMBER
+}
+
 export interface JSONParserOptions extends TokenizerOptions, TokenParserOptions {}
 
 export default class JSONParser {
@@ -57,18 +65,7 @@ export default class JSONParser {
     tokenizer: ParsedTokenInfo
   }) => void) {
     this.tokenizer.onToken = parsedToken => {
-      const valueTokenTypes = [
-        TokenType.STRING,
-        TokenType.NUMBER,
-        TokenType.TRUE,
-        TokenType.FALSE,
-        TokenType.NULL
-      ]
-
-      if (
-        this.tokenParser.state === TokenParserState.VALUE &&
-        valueTokenTypes.includes(parsedToken.token)
-      ) {
+      if (this.tokenParser.state === TokenParserState.VALUE && isValueToken(parsedToken.token)) {
         cb({
           parser: {
             state: this.tokenParser.state,
@@ -80,7 +77,9 @@ export default class JSONParser {
         })
       }
 
-      this.tokenParser.write(parsedToken)
+      if (!parsedToken.partial) {
+        this.tokenParser.write(parsedToken)
+      }
     }
   }
 

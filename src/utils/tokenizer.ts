@@ -80,9 +80,15 @@ function tokenizerStateToString(tokenizerState: TokenizerStates): string {
   ][tokenizerState]
 }
 
+/** Internal tokenizer controls shared by the streaming parser and its compatibility layer. */
 export interface TokenizerOptions {
   handleUnescapedNewLines?: boolean
   numberBufferSize?: number
+  /**
+   * Controls partial string callback frequency without changing source chunks or snapshot policy.
+   * Character mode preserves legacy progress cadence; chunk mode coalesces hot-path updates.
+   */
+  partialStringTokenMode?: "character" | "chunk"
   separator?: string
   stringBufferSize?: number
 }
@@ -90,6 +96,7 @@ export interface TokenizerOptions {
 const defaultOpts: TokenizerOptions = {
   stringBufferSize: 0,
   numberBufferSize: 0,
+  partialStringTokenMode: "character",
   separator: undefined,
   handleUnescapedNewLines: false
 }
@@ -101,6 +108,10 @@ export class TokenizerError extends Error {
   }
 }
 
+/**
+ * Tokenizes JSON across arbitrary byte boundaries, including split UTF-8 and escape sequences.
+ * Chunk string mode batches contiguous ASCII bytes and flushes one partial value after each write.
+ */
 export default class Tokenizer {
   private state = TokenizerStates.START
 
@@ -110,6 +121,7 @@ export default class Tokenizer {
   private separatorIndex = 0
   private readonly bufferedString: StringBuilder
   private readonly bufferedNumber: StringBuilder
+  private readonly batchStringsByChunk: boolean
 
   private unicode?: string // unicode escapes
   private highSurrogate?: number
@@ -143,8 +155,11 @@ export default class Tokenizer {
       options.stringBufferSize && options.stringBufferSize > 0
         ? new BufferedString(options.stringBufferSize)
         : new NonBufferedString({
+            deferIncrementalUpdates: options.partialStringTokenMode === "chunk",
             onIncrementalString
           })
+    this.batchStringsByChunk =
+      options.partialStringTokenMode === "chunk" && !(options.stringBufferSize ?? 0)
 
     this.bufferedNumber =
       options.numberBufferSize && options.numberBufferSize > 0
@@ -349,7 +364,25 @@ export default class Tokenizer {
             }
 
             if (n >= charset.SPACE) {
-              this.bufferedString.appendChar(n)
+              if (this.batchStringsByChunk) {
+                let end = i + 1
+                while (end < buffer.length) {
+                  const next = buffer[end]
+                  if (
+                    next < charset.SPACE ||
+                    next >= 128 ||
+                    next === charset.QUOTATION_MARK ||
+                    next === charset.REVERSE_SOLIDUS
+                  ) {
+                    break
+                  }
+                  end += 1
+                }
+                this.bufferedString.appendBuf(buffer, i, end)
+                i = end - 1
+              } else {
+                this.bufferedString.appendChar(n)
+              }
               continue
             }
 
@@ -654,6 +687,7 @@ export default class Tokenizer {
           )}" at position "${i}" in state ${tokenizerStateToString(this.state)}`
         )
       }
+      this.bufferedString.flushPending()
     } catch (error: unknown) {
       this.error(error instanceof Error ? error : new Error(String(error)))
     }

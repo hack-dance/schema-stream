@@ -42,6 +42,24 @@ export interface ParsedElementInfo {
   value: JsonPrimitive | JsonStruct
 }
 
+/**
+ * Writes parsed object keys without invoking inherited setters or the legacy `__proto__` mutator.
+ * Ordinary owned keys retain the assignment fast path used by object-heavy streams.
+ */
+function setOwnJsonValue(target: JsonObject, key: string, value: JsonPrimitive | JsonStruct): void {
+  if (Object.hasOwn(target, key) || !(key in target)) {
+    target[key] = value
+    return
+  }
+
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true
+  })
+}
+
 export const enum TokenParserState {
   VALUE = 0,
   KEY = 1,
@@ -217,7 +235,7 @@ export default class TokenParser {
           token === TokenType.NULL
         ) {
           if (this.mode === TokenParserMode.OBJECT) {
-            ;(this.value as JsonObject)[this.key as string] = value
+            setOwnJsonValue(this.value as JsonObject, this.key as string, value)
             this.state = TokenParserState.COMMA
           } else if (this.mode === TokenParserMode.ARRAY) {
             ;(this.value as JsonArray).push(value)
@@ -232,7 +250,7 @@ export default class TokenParser {
           this.push()
           if (this.mode === TokenParserMode.OBJECT) {
             const object: JsonObject = {}
-            ;(this.value as JsonObject)[this.key as string] = object
+            setOwnJsonValue(this.value as JsonObject, this.key as string, object)
             this.value = object
           } else if (this.mode === TokenParserMode.ARRAY) {
             const val = {}
@@ -251,7 +269,7 @@ export default class TokenParser {
           this.push()
           if (this.mode === TokenParserMode.OBJECT) {
             const array: JsonArray = []
-            ;(this.value as JsonObject)[this.key as string] = array
+            setOwnJsonValue(this.value as JsonObject, this.key as string, array)
             this.value = array
           } else if (this.mode === TokenParserMode.ARRAY) {
             const val: JsonArray = []

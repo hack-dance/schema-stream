@@ -1,3 +1,4 @@
+import { Agent as MastraAgent } from "@mastra/core/agent"
 import { Agent, run } from "@openai/agents"
 import { Output, streamText } from "ai"
 import { SchemaStream, type SchemaStreamChunk, type SnapshotPolicy } from "schema-stream"
@@ -30,12 +31,28 @@ if (stub.title !== null || stub.nested?.count !== null || stub.items?.length !==
 }
 
 const emissions: SchemaStreamChunk<typeof schema>[] = []
-for await (const partial of new SchemaStream(schema).iterate(chunkedJson())) {
+const completedPaths: (readonly (string | number)[])[] = []
+let completedLabel: unknown
+const parser = new SchemaStream(schema, {
+  onValueComplete({ path, value }) {
+    completedPaths.push(path)
+    if (path.join(".") === "items.0.label") {
+      completedLabel = value
+    }
+  }
+})
+for await (const partial of parser.iterate(chunkedJson())) {
   emissions.push(partial)
 }
 
 if (!emissions.some(partial => partial.title === "hel") || emissions.at(-1)?.nested?.count !== 2) {
   throw new Error("schema-stream packed iterate mismatch")
+}
+if (
+  !completedPaths.some(path => path.join(".") === "items.0.label") ||
+  completedLabel !== "first"
+) {
+  throw new Error("schema-stream packed completion event mismatch")
 }
 
 const finalPolicy = { mode: "final" } satisfies SnapshotPolicy
@@ -57,12 +74,24 @@ const miniStub = new SchemaStream(miniSchema).getSchemaStub(miniSchema)
 if (miniStub.title !== null || miniStub.nested?.count !== null) {
   throw new Error("schema-stream packed Zod Mini stub mismatch")
 }
+const miniEmissions: SchemaStreamChunk<typeof miniSchema>[] = []
+for await (const partial of new SchemaStream(miniSchema).iterate(
+  (async function* () {
+    yield '{"title":"mini","nested":{"count":3}}'
+  })(),
+  { snapshotPolicy: { mode: "final" } }
+)) {
+  miniEmissions.push(partial)
+}
+if (miniEmissions.at(-1)?.title !== "mini" || miniEmissions.at(-1)?.nested?.count !== 3) {
+  throw new Error("schema-stream packed Zod Mini iterate mismatch")
+}
 
 /** Compile-only fixture; it is never called and cannot contact a model. */
 async function openAiAgentsCompatibility(): Promise<void> {
   const agent = new Agent({
     name: "Packed SchemaStream fixture",
-    model: "gpt-5.5",
+    model: "gpt-5.6-luna",
     instructions: "Return structured data.",
     outputType: schema
   })
@@ -81,7 +110,7 @@ async function openAiAgentsCompatibility(): Promise<void> {
 /** Compile-only fixture; it is never called and cannot contact a model. */
 async function vercelAiSdkCompatibility(): Promise<void> {
   const result = streamText({
-    model: "openai/gpt-5.5",
+    model: "openai/gpt-5.6-luna",
     output: Output.object({ schema }),
     prompt: "Extract data."
   })
@@ -95,7 +124,29 @@ async function vercelAiSdkCompatibility(): Promise<void> {
   void finalOutput
 }
 
+/** Compile-only fixture; it is never called and cannot contact a model. */
+async function mastraCompatibility(): Promise<void> {
+  const agent = new MastraAgent({
+    id: "packed-schema-stream-fixture",
+    name: "Packed SchemaStream fixture",
+    model: "openai/gpt-5.6-luna",
+    instructions: "Return structured data."
+  })
+  const result = await agent.stream("Extract data.", {
+    structuredOutput: { schema }
+  })
+
+  for await (const partial of new SchemaStream(schema).iterate(result.textStream)) {
+    const typedPartial: SchemaStreamChunk<typeof schema> = partial
+    void typedPartial.nested?.count
+  }
+
+  const finalOutput: z.output<typeof schema> = await result.object
+  void finalOutput
+}
+
 void openAiAgentsCompatibility
 void vercelAiSdkCompatibility
+void mastraCompatibility
 
-console.log("packed ESM, Zod 4/Mini, and SDK compatibility passed")
+console.log("packed ESM, Zod 4/Mini runtime, completion events, and SDK compatibility passed")

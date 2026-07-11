@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="dark" name="color-scheme">
+    <title>SchemaStream Snapshot Console</title>
+    <link href="/styles.css" rel="stylesheet">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span aria-hidden="true" class="brand-mark">SS</span>
+          <div>
+            <h1>SchemaStream</h1>
+            <p>Snapshot console</p>
+          </div>
+        </div>
+        <div class="connection" data-state="connecting" id="connection-state">
+          <span aria-hidden="true" class="status-dot"></span>
+          <span id="connection-label">Connecting</span>
+        </div>
+      </header>
+
+      <section aria-label="Generation controls" class="command-bar">
+        <label class="prompt-field" for="prompt">
+          <span id="prompt-label">Fixture scenario</span>
+          <input
+            data-openai-request="Assess a customer-facing release with three open checks and produce a launch-control snapshot."
+            disabled
+            id="prompt"
+            maxlength="800"
+            title="Fixed input for the deterministic fixture"
+            value="Customer-facing release with three open checks and an approval gate."
+          >
+        </label>
+        <fieldset class="mode-picker">
+          <legend class="visually-hidden">Data source</legend>
+          <button
+            class="mode-button is-active"
+            data-mode="fixture"
+            title="Replay a deterministic local fixture"
+            type="button"
+          >
+            Fixture
+          </button>
+          <button
+            aria-describedby="openai-availability"
+            aria-disabled="true"
+            class="mode-button is-unavailable"
+            data-mode="openai"
+            id="openai-mode"
+            title="Checking OpenAI availability"
+            type="button"
+          >
+            OpenAI
+          </button>
+          <span class="visually-hidden" id="openai-availability">
+            Checking OpenAI availability.
+          </span>
+        </fieldset>
+        <button class="run-button" id="run" type="button">
+          <span aria-hidden="true" class="play-icon"></span>
+          <span id="run-label">Replay</span>
+        </button>
+        <button class="stop-button" disabled id="stop" title="Cancel generation" type="button">
+          <span aria-hidden="true"></span>
+          <span class="visually-hidden">Cancel generation</span>
+        </button>
+      </section>
+
+      <section aria-label="Snapshot cadence" class="policy-bar">
+        <fieldset class="policy-picker">
+          <legend>Snapshots</legend>
+          <button
+            class="policy-button is-active"
+            data-policy="chunk"
+            title="One snapshot per incoming source chunk"
+            type="button"
+          >
+            Chunk (default)
+          </button>
+          <button class="policy-button" data-policy="value" type="button">Value</button>
+          <button class="policy-button" data-policy="bytes" type="button">Bytes</button>
+          <button class="policy-button" data-policy="final" type="button">Final</button>
+        </fieldset>
+        <label class="bytes-control" hidden id="bytes-control">
+          <span>Every</span>
+          <input id="byte-threshold" max="1000000" min="1" type="number" value="96">
+          <span>bytes</span>
+        </label>
+        <fieldset class="wire-stats">
+          <legend class="visually-hidden">Input stream totals</legend>
+          <span><strong>0</strong> string buffer</span>
+          <span><strong id="input-chunks">0</strong> chunks in</span>
+          <span><strong id="input-bytes">0</strong> bytes</span>
+        </fieldset>
+      </section>
+
+      <div aria-hidden="true" class="progress-track">
+        <span id="progress-bar"></span>
+      </div>
+
+      <section class="workspace">
+        <article aria-labelledby="preview-title" class="preview">
+          <header class="panel-header">
+            <div>
+              <p class="eyebrow">Materialized snapshot</p>
+              <h2 id="preview-title">Waiting for a run</h2>
+            </div>
+            <span class="stage-badge" id="stage-badge">Idle</span>
+          </header>
+
+          <div class="decision-strip" hidden id="decision-strip">
+            <span aria-hidden="true" class="decision-icon">!</span>
+            <div>
+              <strong id="decision-branch">Decision pending</strong>
+              <p id="decision-action"></p>
+            </div>
+          </div>
+
+          <section class="stream-section brief-section" data-state="locked" id="brief-section">
+            <div class="section-heading">
+              <h3>Brief</h3>
+              <span id="brief-state">Locked</span>
+            </div>
+            <p class="brief" id="brief">No structured values received.</p>
+          </section>
+
+          <section class="stream-section metrics-section" data-state="locked" id="metrics-section">
+            <div class="section-heading">
+              <h3>Metrics</h3>
+              <span id="metrics-state">Locked</span>
+            </div>
+            <div class="metrics" id="metrics"></div>
+          </section>
+
+          <section
+            class="activity-section stream-section"
+            data-state="locked"
+            id="activity-section"
+          >
+            <div class="section-heading">
+              <h3>Activity</h3>
+              <span id="activity-count">0 events</span>
+            </div>
+            <ol class="activity-list" id="activity"></ol>
+          </section>
+
+          <section
+            class="readiness-section stream-section"
+            data-state="locked"
+            id="readiness-section"
+          >
+            <div class="section-heading">
+              <h3>Release readiness</h3>
+              <span id="readiness-state">Locked</span>
+            </div>
+            <div class="readiness-body">
+              <div class="readiness-score">
+                <div>
+                  <strong id="readiness-score">--</strong>
+                  <span>/ 100</span>
+                </div>
+                <div aria-hidden="true" class="score-track">
+                  <span id="score-bar"></span>
+                </div>
+              </div>
+              <ul aria-label="Readiness checks" class="check-list" id="check-list"></ul>
+            </div>
+          </section>
+
+          <footer class="next-action stream-section" data-state="locked" id="next-action-section">
+            <span>Next action</span>
+            <strong id="next-action">Pending</strong>
+          </footer>
+        </article>
+
+        <aside aria-label="Stream inspection" class="terminal" id="terminal">
+          <section class="terminal-panel" data-collapsed="false" id="event-panel">
+            <header class="terminal-header">
+              <div aria-hidden="true" class="window-controls">
+                <span></span><span></span><span></span>
+              </div>
+              <h2 id="terminal-title">Event log</h2>
+              <div class="terminal-stats">
+                <span id="snapshot-count">0 snapshots</span>
+                <span id="elapsed-time">0 ms</span>
+                <span class="event-counter" id="event-counter">0</span>
+              </div>
+              <button
+                aria-controls="event-log"
+                aria-expanded="true"
+                aria-label="Collapse event log"
+                class="panel-toggle"
+                data-panel-toggle="events"
+                title="Collapse event log"
+                type="button"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+              <span aria-live="polite" class="visually-hidden" id="status-announcer"></span>
+            </header>
+            <div
+              aria-labelledby="terminal-title"
+              aria-live="off"
+              class="terminal-body"
+              id="event-log"
+              role="log"
+            ></div>
+          </section>
+
+          <section
+            aria-labelledby="raw-json-heading"
+            class="json-panel terminal-panel"
+            data-collapsed="false"
+            id="json-panel"
+          >
+            <header class="json-header">
+              <h3 id="raw-json-heading">Raw snapshot JSON</h3>
+              <span id="json-size">2 bytes</span>
+              <button
+                aria-controls="raw-json"
+                aria-expanded="true"
+                aria-label="Collapse raw snapshot JSON"
+                class="panel-toggle"
+                data-panel-toggle="json"
+                title="Collapse raw snapshot JSON"
+                type="button"
+              >
+                <span aria-hidden="true"></span>
+              </button>
+            </header>
+            <textarea
+              aria-labelledby="raw-json-heading"
+              class="raw-json"
+              id="raw-json"
+              readonly
+              spellcheck="false"
+            >
+              { }
+            </textarea>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
