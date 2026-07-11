@@ -2,19 +2,22 @@
 
 [![npm](https://img.shields.io/npm/v/schema-stream.svg)](https://www.npmjs.com/package/schema-stream)
 [![CI](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml/badge.svg)](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml)
+[![Follow @dimitrikennedy](https://img.shields.io/twitter/follow/dimitrikennedy?style=social&labelColor=000000)](https://twitter.com/dimitrikennedy)
 
-Progressively parse streamed JSON into typed, schema-shaped snapshots. `schema-stream` is useful
-when a model or HTTP response is still arriving but the UI should render partial nested values
-immediately.
+Parse JSON while it is still arriving. `schema-stream` turns a Web Stream or async iterable into
+typed, schema-shaped snapshots, so a UI can render partial strings, nested objects, and arrays
+before the response is complete.
 
 - SDK-neutral `iterate()` API for Web Streams and async iterables
-- Progressive strings, nested objects, arrays, defaults, and completion paths
+- Schema-derived placeholders, progressive nested values, and completion paths
+- Opt-in snapshot policies for per-value, byte-threshold, and final-only updates
 - OpenAI Agents SDK and Vercel AI SDK text-stream compatibility
 - Zod 4 Classic, Zod Mini, and Zod 3.25+
 - ESM and CommonJS builds with no runtime dependency beyond the Zod peer
 
-`schema-stream` derives types and initial placeholders from the schema. It does not validate partial
-or final values; use your schema or the producing SDK's settled output for authoritative validation.
+Snapshots are progressive parser output, not validation results. `schema-stream` uses the schema for
+types and initial placeholders, but it does not validate partial or final values. Validate the
+settled value with your schema or use the producing SDK's validated result.
 
 ## Install
 
