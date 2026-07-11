@@ -1,0 +1,132 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core", "ultracite/biome/vitest"],
+  "formatter": {
+    "lineWidth": 100
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedKeys": "off",
+        "useSortedPackageJson": "on",
+        "useSortedProperties": "off"
+      }
+    }
+  },
+  "javascript": {
+    "globals": ["Bun"],
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "semicolons": "asNeeded",
+      "trailingCommas": "none"
+    }
+  },
+  "json": {
+    "formatter": {
+      "lineWidth": 100
+    }
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "useConsistentMemberAccessibility": "off",
+        "useConsistentTypeDefinitions": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // This package intentionally exposes one public entry point.
+      "includes": ["src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    },
+    {
+      // Numeric enums and explicit state transitions keep the streaming parser allocation-light.
+      "includes": [
+        "src/utils/token-parser.ts",
+        "src/utils/token-type.ts",
+        "src/utils/tokenizer.ts"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "style": {
+            "noEnum": "off"
+          },
+          "suspicious": {
+            "noConstEnum": "off",
+            "noUnnecessaryConditions": "off"
+          }
+        }
+      }
+    },
+    {
+      // Character constants are inlined throughout the tokenizer hot path.
+      "includes": ["src/utils/utf-8.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConstEnum": "off"
+          }
+        }
+      }
+    },
+    {
+      // Sequential reads preserve stream backpressure and cancellation semantics.
+      "includes": ["src/utils/streaming-json-parser.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noAwaitInLoops": "off"
+          },
+          "suspicious": {
+            "noUnnecessaryConditions": "off"
+          }
+        }
+      }
+    },
+    {
+      // Zod 3 and Zod 4 definitions are narrowed across two independent runtime contracts.
+      "includes": ["src/utils/zod-compat.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnnecessaryConditions": "off"
+          }
+        }
+      }
+    },
+    {
+      // Compatibility fixtures intentionally exercise namespaces, sequential streams, and types.
+      "includes": ["tests/**/*.ts", "tests/**/*.cjs"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noVoid": "off"
+          },
+          "performance": {
+            "noAwaitInLoops": "off",
+            "noDelete": "off",
+            "noNamespaceImport": "off"
+          },
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "suspicious": {
+            "noEvolvingTypes": "off",
+            "noUnnecessaryConditions": "off",
+            "useAwait": "off"
+          }
+        }
+      }
+    }
+  ]
+}

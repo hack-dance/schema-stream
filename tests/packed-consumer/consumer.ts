@@ -1,6 +1,6 @@
 import { Agent, run } from "@openai/agents"
 import { Output, streamText } from "ai"
-import { SchemaStream, type SchemaStreamChunk } from "schema-stream"
+import { SchemaStream, type SchemaStreamChunk, type SnapshotPolicy } from "schema-stream"
 import { z } from "zod"
 import * as zm from "zod/mini"
 
@@ -36,6 +36,17 @@ for await (const partial of new SchemaStream(schema).iterate(chunkedJson())) {
 
 if (!emissions.some(partial => partial.title === "hel") || emissions.at(-1)?.nested?.count !== 2) {
   throw new Error("schema-stream packed iterate mismatch")
+}
+
+const finalPolicy = { mode: "final" } satisfies SnapshotPolicy
+const finalEmissions: SchemaStreamChunk<typeof schema>[] = []
+for await (const partial of new SchemaStream(schema).iterate(chunkedJson(), {
+  snapshotPolicy: finalPolicy
+})) {
+  finalEmissions.push(partial)
+}
+if (finalEmissions.length !== 1 || finalEmissions[0]?.nested?.count !== 2) {
+  throw new Error("schema-stream packed snapshot policy mismatch")
 }
 
 const miniSchema = zm.object({

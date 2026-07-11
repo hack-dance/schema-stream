@@ -17,48 +17,48 @@ export type JsonArray = (JsonPrimitive | JsonStruct)[]
 export type JsonStruct = JsonObject | JsonArray
 
 export const enum TokenParserMode {
-  OBJECT,
-  ARRAY
+  OBJECT = 0,
+  ARRAY = 1
 }
 
 export interface StackElement {
-  key: JsonKey
-  value: JsonStruct
-  mode?: TokenParserMode
   emit: boolean
+  key: JsonKey
+  mode?: TokenParserMode
+  value: JsonStruct
 }
 
 export interface ParsedTokenInfo {
-  token: TokenType
-  value: JsonPrimitive
   offset?: number
   partial?: boolean
+  token: TokenType
+  value: JsonPrimitive
 }
 
 export interface ParsedElementInfo {
-  value: JsonPrimitive | JsonStruct
-  parent?: JsonStruct
   key?: JsonKey
+  parent?: JsonStruct
   stack: StackElement[]
+  value: JsonPrimitive | JsonStruct
 }
 
 export const enum TokenParserState {
-  VALUE,
-  KEY,
-  COLON,
-  COMMA,
-  ENDED,
-  ERROR,
-  SEPARATOR
+  VALUE = 0,
+  KEY = 1,
+  COLON = 2,
+  COMMA = 3,
+  ENDED = 4,
+  ERROR = 5,
+  SEPARATOR = 6
 }
 
-function TokenParserStateToString(state: TokenParserState): string {
+function tokenParserStateToString(state: TokenParserState): string {
   return ["VALUE", "KEY", "COLON", "COMMA", "ENDED", "ERROR", "SEPARATOR"][state]
 }
 
 export interface TokenParserOptions {
-  paths?: string[]
   keepStack?: boolean
+  paths?: string[]
   separator?: string
 }
 
@@ -71,8 +71,7 @@ const defaultOpts: TokenParserOptions = {
 export class TokenParserError extends Error {
   constructor(message: string) {
     super(message)
-    // Typescript is broken. This is a workaround
-    Object.setPrototypeOf(this, TokenParserError.prototype)
+    Object.setPrototypeOf(this, new.target.prototype)
   }
 }
 
@@ -87,41 +86,60 @@ export default class TokenParser {
   stack: StackElement[] = []
 
   constructor(opts?: TokenParserOptions) {
-    opts = { ...defaultOpts, ...opts }
+    const options = { ...defaultOpts, ...opts }
 
-    if (opts.paths) {
-      this.paths = opts.paths.map(path => {
-        if (path === undefined || path === "$*") return undefined
+    if (options.paths) {
+      const paths: (string[] | undefined)[] = []
+      for (const path of options.paths) {
+        if (path === undefined || path === "$*") {
+          paths.push(undefined)
+          continue
+        }
 
-        if (!path.startsWith("$"))
+        if (!path.startsWith("$")) {
           throw new TokenParserError(`Invalid selector "${path}". Should start with "$".`)
+        }
         const pathParts = path.split(".").slice(1)
-        if (pathParts.includes(""))
+        if (pathParts.includes("")) {
           throw new TokenParserError(`Invalid selector "${path}". ".." syntax not supported.`)
-        return pathParts
-      })
+        }
+        paths.push(pathParts)
+      }
+      this.paths = paths
     }
 
-    this.keepStack = true
-    this.separator = opts.separator
+    this.keepStack = options.keepStack ?? true
+    this.separator = options.separator
   }
 
   private shouldEmit(): boolean {
-    if (!this.paths) return true
+    if (!this.paths) {
+      return true
+    }
 
     return this.paths.some(path => {
-      if (path === undefined) return true
-      if (path.length !== this.stack.length) return false
-
-      for (let i = 0; i < path.length - 1; i++) {
-        const selector = path[i]
-        const key = this.stack[i + 1].key
-        if (selector === "*") continue
-        if (selector !== key) return false
+      if (path === undefined) {
+        return true
+      }
+      if (path.length !== this.stack.length) {
+        return false
       }
 
-      const selector = path[path.length - 1]
-      if (selector === "*") return true
+      for (let i = 0; i < path.length - 1; i += 1) {
+        const selector = path[i]
+        const { key } = this.stack[i + 1]
+        if (selector === "*") {
+          continue
+        }
+        if (selector !== key) {
+          return false
+        }
+      }
+
+      const selector = path.at(-1)
+      if (selector === "*") {
+        return true
+      }
       return selector === this.key?.toString()
     })
   }
@@ -136,30 +154,34 @@ export default class TokenParser {
   }
 
   private pop(): void {
-    const value = this.value
+    const { value } = this
+    const stackElement = this.stack.pop()
+    if (!stackElement) {
+      throw new TokenParserError("Unexpected container end without a parent stack entry")
+    }
 
-    let emit
-    ;({
-      key: this.key,
-      value: this.value,
-      mode: this.mode,
-      emit
-    } = this.stack.pop() as StackElement)
+    const { emit, key, mode, value: parentValue } = stackElement
+    this.key = key
+    this.mode = mode
+    this.value = parentValue
 
-    this.state = this.mode !== undefined ? TokenParserState.COMMA : TokenParserState.VALUE
+    this.state = this.mode === undefined ? TokenParserState.VALUE : TokenParserState.COMMA
 
     this.emit(value as JsonPrimitive | JsonStruct, emit)
   }
 
   private emit(value: JsonPrimitive | JsonStruct, emit: boolean): void {
     if (!this.keepStack && this.value && this.stack.every(item => !item.emit)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (this.value as JsonStruct as any)[this.key as string | number]
+      if (Array.isArray(this.value) && typeof this.key === "number") {
+        delete this.value[this.key]
+      } else if (!Array.isArray(this.value) && typeof this.key === "string") {
+        delete this.value[this.key]
+      }
     }
 
     if (emit) {
       this.onValue({
-        value: value,
+        value,
         key: this.key,
         parent: this.value,
         stack: this.stack
@@ -209,7 +231,9 @@ export default class TokenParser {
         if (token === TokenType.LEFT_BRACE) {
           this.push()
           if (this.mode === TokenParserMode.OBJECT) {
-            this.value = (this.value as JsonObject)[this.key as string] = {}
+            const object: JsonObject = {}
+            ;(this.value as JsonObject)[this.key as string] = object
+            this.value = object
           } else if (this.mode === TokenParserMode.ARRAY) {
             const val = {}
             ;(this.value as JsonArray).push(val)
@@ -226,7 +250,9 @@ export default class TokenParser {
         if (token === TokenType.LEFT_BRACKET) {
           this.push()
           if (this.mode === TokenParserMode.OBJECT) {
-            this.value = (this.value as JsonObject)[this.key as string] = []
+            const array: JsonArray = []
+            ;(this.value as JsonObject)[this.key as string] = array
+            this.value = array
           } else if (this.mode === TokenParserMode.ARRAY) {
             const val: JsonArray = []
             ;(this.value as JsonArray).push(val)
@@ -263,11 +289,9 @@ export default class TokenParser {
         }
       }
 
-      if (this.state === TokenParserState.COLON) {
-        if (token === TokenType.COLON) {
-          this.state = TokenParserState.VALUE
-          return
-        }
+      if (this.state === TokenParserState.COLON && token === TokenType.COLON) {
+        this.state = TokenParserState.VALUE
+        return
       }
 
       if (this.state === TokenParserState.COMMA) {
@@ -293,21 +317,22 @@ export default class TokenParser {
         }
       }
 
-      if (this.state === TokenParserState.SEPARATOR) {
-        if (token === TokenType.SEPARATOR && value === this.separator) {
-          this.state = TokenParserState.VALUE
-          return
-        }
+      if (
+        this.state === TokenParserState.SEPARATOR &&
+        token === TokenType.SEPARATOR &&
+        value === this.separator
+      ) {
+        this.state = TokenParserState.VALUE
+        return
       }
 
       throw new TokenParserError(
         `Unexpected ${TokenType[token]} (${JSON.stringify(
           value
-        )}) in state ${TokenParserStateToString(this.state)}`
+        )}) in state ${tokenParserStateToString(this.state)}`
       )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      this.error(err)
+    } catch (error: unknown) {
+      this.error(error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -326,7 +351,7 @@ export default class TokenParser {
     ) {
       this.error(
         new Error(
-          `Parser ended in mid-parsing (state: ${TokenParserStateToString(
+          `Parser ended in mid-parsing (state: ${tokenParserStateToString(
             this.state
           )}). Either not all the data was received or the data was invalid.`
         )
@@ -337,7 +362,6 @@ export default class TokenParser {
     }
   }
 
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   public onValue(_parsedElementInfo: ParsedElementInfo): void {
     throw new TokenParserError('Can\'t emit data before the "onValue" callback has been set up.')
   }

@@ -9,6 +9,16 @@ dist
 .env
 .env.*
 !.env.example
+.mise.local.toml
+
+# Local credentials and signing material
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.mobileprovision
+*.secrets.*
 
 # Package-manager and debug output
 npm-debug.log*
@@ -20,3 +30,12 @@ yarn-error.log*
 .idea
 .vscode
 *.pem
+
+# Local agent and profiling state
+.agents/
+.claude/
+.codex/
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+*.trace

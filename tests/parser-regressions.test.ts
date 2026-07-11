@@ -1,6 +1,6 @@
-import { SchemaStream } from "@/index"
 import { describe, expect, test } from "bun:test"
 import * as z from "zod"
+import { SchemaStream } from "@/index"
 
 import { collectEmissions } from "./helpers"
 
@@ -44,6 +44,39 @@ describe("stream parser regressions", () => {
     })
 
     expect(emissions.at(-1)).toEqual(data)
+  })
+
+  test("buffers multi-byte strings when the buffer is smaller than a UTF-8 character", async () => {
+    const schema = z.object({ text: z.string() })
+    const data = { text: "🌊日本語" }
+
+    for (const stringBufferSize of [1, 2, 3]) {
+      const { emissions } = await collectEmissions({
+        schema,
+        chunks: [JSON.stringify(data)],
+        parseOptions: { stringBufferSize }
+      })
+
+      expect(emissions).toEqual([data])
+    }
+  })
+
+  test("preserves escaped lone, repeated, and paired UTF-16 surrogates", async () => {
+    const schema = z.object({ text: z.string() })
+    const highSurrogate = String.fromCharCode(0xd8_3d)
+    const data = {
+      text: `${highSurrogate}X|${highSurrogate}${highSurrogate}|🌊|${highSurrogate}\n`
+    }
+    const json = String.raw`{"text":"\ud83dX|\ud83d\ud83d|\ud83c\udf0a|\ud83d\n"}`
+    for (const stringBufferSize of [0, 1]) {
+      const { emissions } = await collectEmissions({
+        schema,
+        chunks: [json],
+        parseOptions: { stringBufferSize }
+      })
+
+      expect(emissions).toEqual([data])
+    }
   })
 
   test("preserves large progressively parsed strings", async () => {

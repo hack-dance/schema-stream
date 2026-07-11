@@ -1,3 +1,4 @@
+"use strict"
 const schemaStream = require("schema-stream")
 
 if (typeof schemaStream.SchemaStream !== "function") {

@@ -1,11 +1,11 @@
 import TokenParser, {
-  JsonKey,
-  ParsedElementInfo,
-  ParsedTokenInfo,
-  StackElement,
-  TokenParserMode,
-  TokenParserState,
-  type TokenParserOptions
+  type JsonKey,
+  type ParsedElementInfo,
+  type ParsedTokenInfo,
+  type StackElement,
+  type TokenParserMode,
+  type TokenParserOptions,
+  TokenParserState
 } from "./token-parser"
 import TokenType from "./token-type"
 import Tokenizer, { type TokenizerOptions } from "./tokenizer"
@@ -13,8 +13,8 @@ import Tokenizer, { type TokenizerOptions } from "./tokenizer"
 export interface JSONParserOptions extends TokenizerOptions, TokenParserOptions {}
 
 export default class JSONParser {
-  private tokenizer: Tokenizer
-  private tokenParser: TokenParser
+  private readonly tokenizer: Tokenizer
+  private readonly tokenParser: TokenParser
 
   constructor(opts: JSONParserOptions = {}) {
     this.tokenizer = new Tokenizer(opts)
@@ -22,12 +22,16 @@ export default class JSONParser {
 
     this.tokenizer.onToken = this.tokenParser.write.bind(this.tokenParser)
     this.tokenizer.onEnd = () => {
-      if (!this.tokenParser.isEnded) this.tokenParser.end()
+      if (!this.tokenParser.isEnded) {
+        this.tokenParser.end()
+      }
     }
 
     this.tokenParser.onError = this.tokenizer.error.bind(this.tokenizer)
     this.tokenParser.onEnd = () => {
-      if (!this.tokenizer.isEnded) this.tokenizer.end()
+      if (!this.tokenizer.isEnded) {
+        this.tokenizer.end()
+      }
     }
   }
 
@@ -43,17 +47,15 @@ export default class JSONParser {
     this.tokenizer.end()
   }
 
-  public set onToken(
-    cb: (parsedTokenInfo: {
-      parser: {
-        state: TokenParserState
-        key: JsonKey
-        mode: TokenParserMode | undefined
-        stack: StackElement[]
-      }
-      tokenizer: ParsedTokenInfo
-    }) => void
-  ) {
+  public set onToken(cb: (parsedTokenInfo: {
+    parser: {
+      state: TokenParserState
+      key: JsonKey
+      mode: TokenParserMode | undefined
+      stack: StackElement[]
+    }
+    tokenizer: ParsedTokenInfo
+  }) => void) {
     this.tokenizer.onToken = parsedToken => {
       const valueTokenTypes = [
         TokenType.STRING,
@@ -92,7 +94,9 @@ export default class JSONParser {
 
   public set onEnd(cb: () => void) {
     this.tokenParser.onEnd = () => {
-      if (!this.tokenizer.isEnded) this.tokenizer.end()
+      if (!this.tokenizer.isEnded) {
+        this.tokenizer.end()
+      }
       cb.call(this.tokenParser)
     }
   }

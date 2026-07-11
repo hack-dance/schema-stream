@@ -15,38 +15,38 @@ import { charset, escapedSequences } from "./utf-8.js"
 
 // Tokenizer States
 const enum TokenizerStates {
-  START,
-  ENDED,
-  ERROR,
-  TRUE1,
-  TRUE2,
-  TRUE3,
-  FALSE1,
-  FALSE2,
-  FALSE3,
-  FALSE4,
-  NULL1,
-  NULL2,
-  NULL3,
-  STRING_DEFAULT,
-  STRING_AFTER_BACKSLASH,
-  STRING_UNICODE_DIGIT_1,
-  STRING_UNICODE_DIGIT_2,
-  STRING_UNICODE_DIGIT_3,
-  STRING_UNICODE_DIGIT_4,
-  STRING_INCOMPLETE_CHAR,
-  NUMBER_AFTER_INITIAL_MINUS,
-  NUMBER_AFTER_INITIAL_ZERO,
-  NUMBER_AFTER_INITIAL_NON_ZERO,
-  NUMBER_AFTER_FULL_STOP,
-  NUMBER_AFTER_DECIMAL,
-  NUMBER_AFTER_E,
-  NUMBER_AFTER_E_AND_SIGN,
-  NUMBER_AFTER_E_AND_DIGIT,
-  SEPARATOR
+  START = 0,
+  ENDED = 1,
+  ERROR = 2,
+  TRUE1 = 3,
+  TRUE2 = 4,
+  TRUE3 = 5,
+  FALSE1 = 6,
+  FALSE2 = 7,
+  FALSE3 = 8,
+  FALSE4 = 9,
+  NULL1 = 10,
+  NULL2 = 11,
+  NULL3 = 12,
+  STRING_DEFAULT = 13,
+  STRING_AFTER_BACKSLASH = 14,
+  STRING_UNICODE_DIGIT_1 = 15,
+  STRING_UNICODE_DIGIT_2 = 16,
+  STRING_UNICODE_DIGIT_3 = 17,
+  STRING_UNICODE_DIGIT_4 = 18,
+  STRING_INCOMPLETE_CHAR = 19,
+  NUMBER_AFTER_INITIAL_MINUS = 20,
+  NUMBER_AFTER_INITIAL_ZERO = 21,
+  NUMBER_AFTER_INITIAL_NON_ZERO = 22,
+  NUMBER_AFTER_FULL_STOP = 23,
+  NUMBER_AFTER_DECIMAL = 24,
+  NUMBER_AFTER_E = 25,
+  NUMBER_AFTER_E_AND_SIGN = 26,
+  NUMBER_AFTER_E_AND_DIGIT = 27,
+  SEPARATOR = 28
 }
 
-function TokenizerStateToString(tokenizerState: TokenizerStates): string {
+function tokenizerStateToString(tokenizerState: TokenizerStates): string {
   return [
     "START",
     "ENDED",
@@ -81,10 +81,10 @@ function TokenizerStateToString(tokenizerState: TokenizerStates): string {
 }
 
 export interface TokenizerOptions {
-  stringBufferSize?: number
+  handleUnescapedNewLines?: boolean
   numberBufferSize?: number
   separator?: string
-  handleUnescapedNewLines?: boolean
+  stringBufferSize?: number
 }
 
 const defaultOpts: TokenizerOptions = {
@@ -97,31 +97,39 @@ const defaultOpts: TokenizerOptions = {
 export class TokenizerError extends Error {
   constructor(message: string) {
     super(message)
-    // Typescript is broken. This is a workaround
-    Object.setPrototypeOf(this, TokenizerError.prototype)
+    Object.setPrototypeOf(this, new.target.prototype)
   }
 }
 
 export default class Tokenizer {
   private state = TokenizerStates.START
 
-  private handleUnescapedNewLines?: boolean
-  private separator?: string
-  private separatorBytes?: Uint8Array
+  private readonly handleUnescapedNewLines?: boolean
+  private readonly separator?: string
+  private readonly separatorBytes?: Uint8Array
   private separatorIndex = 0
-  private bufferedString: StringBuilder
-  private bufferedNumber: StringBuilder
+  private readonly bufferedString: StringBuilder
+  private readonly bufferedNumber: StringBuilder
 
   private unicode?: string // unicode escapes
   private highSurrogate?: number
-  private bytes_remaining = 0 // number of bytes remaining in multi byte utf8 char to read after split boundary
-  private bytes_in_sequence = 0 // bytes in multi byte utf8 char to read
-  private char_split_buffer = new Uint8Array(4) // for rebuilding chars split before boundary is reached
-  private encoder = new TextEncoder()
+  private bytesRemaining = 0
+  private bytesInSequence = 0
+  private readonly charSplitBuffer = new Uint8Array(4)
+  private readonly encoder = new TextEncoder()
   private offset = -1
 
+  private appendPendingHighSurrogate(): void {
+    if (this.highSurrogate === undefined) {
+      return
+    }
+
+    this.bufferedString.appendString(String.fromCharCode(this.highSurrogate))
+    this.highSurrogate = undefined
+  }
+
   constructor(opts?: TokenizerOptions) {
-    opts = { ...defaultOpts, ...opts }
+    const options = { ...defaultOpts, ...opts }
 
     const onIncrementalString = (str: string) => {
       this.onToken({
@@ -132,20 +140,20 @@ export default class Tokenizer {
     }
 
     this.bufferedString =
-      opts?.stringBufferSize && opts.stringBufferSize > 0
-        ? new BufferedString(opts.stringBufferSize)
+      options.stringBufferSize && options.stringBufferSize > 0
+        ? new BufferedString(options.stringBufferSize)
         : new NonBufferedString({
             onIncrementalString
           })
 
     this.bufferedNumber =
-      opts?.numberBufferSize && opts.numberBufferSize > 0
-        ? new BufferedString(opts.numberBufferSize, onIncrementalString)
+      options.numberBufferSize && options.numberBufferSize > 0
+        ? new BufferedString(options.numberBufferSize, onIncrementalString)
         : new NonBufferedString({})
 
-    this.handleUnescapedNewLines = opts?.handleUnescapedNewLines ?? false
-    this.separator = opts?.separator
-    this.separatorBytes = opts?.separator ? this.encoder.encode(opts.separator) : undefined
+    this.handleUnescapedNewLines = options.handleUnescapedNewLines ?? false
+    this.separator = options.separator
+    this.separatorBytes = options.separator ? this.encoder.encode(options.separator) : undefined
   }
 
   public get isEnded(): boolean {
@@ -291,6 +299,13 @@ export default class Tokenizer {
             break
           // STRING
           case TokenizerStates.STRING_DEFAULT:
+            if (n === charset.REVERSE_SOLIDUS) {
+              this.state = TokenizerStates.STRING_AFTER_BACKSLASH
+              continue
+            }
+
+            this.appendPendingHighSurrogate()
+
             if (this.handleUnescapedNewLines && n === charset.NEWLINE) {
               this.bufferedString.appendChar(charset.REVERSE_SOLIDUS) // Appends '\'
               this.bufferedString.appendChar(charset.LATIN_SMALL_LETTER_N) // Appends 'n'
@@ -309,30 +324,25 @@ export default class Tokenizer {
               continue
             }
 
-            if (n === charset.REVERSE_SOLIDUS) {
-              this.state = TokenizerStates.STRING_AFTER_BACKSLASH
-              continue
-            }
-
             if (n >= 128) {
               // Parse multi byte (>=128) chars one at a time
               if (n >= 194 && n <= 223) {
-                this.bytes_in_sequence = 2
+                this.bytesInSequence = 2
               } else if (n <= 239) {
-                this.bytes_in_sequence = 3
+                this.bytesInSequence = 3
               } else {
-                this.bytes_in_sequence = 4
+                this.bytesInSequence = 4
               }
 
-              if (this.bytes_in_sequence <= buffer.length - i) {
+              if (this.bytesInSequence <= buffer.length - i) {
                 // if bytes needed to complete char fall outside buffer length, we have a boundary split
-                this.bufferedString.appendBuf(buffer, i, i + this.bytes_in_sequence)
-                i += this.bytes_in_sequence - 1
+                this.bufferedString.appendBuf(buffer, i, i + this.bytesInSequence)
+                i += this.bytesInSequence - 1
                 continue
               }
 
-              this.bytes_remaining = i + this.bytes_in_sequence - buffer.length
-              this.char_split_buffer.set(buffer.subarray(i))
+              this.bytesRemaining = i + this.bytesInSequence - buffer.length
+              this.charSplitBuffer.set(buffer.subarray(i))
               i = buffer.length - 1
               this.state = TokenizerStates.STRING_INCOMPLETE_CHAR
               continue
@@ -346,14 +356,14 @@ export default class Tokenizer {
             break
           case TokenizerStates.STRING_INCOMPLETE_CHAR: {
             // Carry a multibyte character across as many input chunks as needed.
-            const availableBytes = Math.min(this.bytes_remaining, buffer.length - i)
-            const targetOffset = this.bytes_in_sequence - this.bytes_remaining
-            this.char_split_buffer.set(buffer.subarray(i, i + availableBytes), targetOffset)
-            this.bytes_remaining -= availableBytes
+            const availableBytes = Math.min(this.bytesRemaining, buffer.length - i)
+            const targetOffset = this.bytesInSequence - this.bytesRemaining
+            this.charSplitBuffer.set(buffer.subarray(i, i + availableBytes), targetOffset)
+            this.bytesRemaining -= availableBytes
             i += availableBytes - 1
 
-            if (this.bytes_remaining === 0) {
-              this.bufferedString.appendBuf(this.char_split_buffer, 0, this.bytes_in_sequence)
+            if (this.bytesRemaining === 0) {
+              this.bufferedString.appendBuf(this.charSplitBuffer, 0, this.bytesInSequence)
               this.state = TokenizerStates.STRING_DEFAULT
             }
 
@@ -361,6 +371,7 @@ export default class Tokenizer {
           }
           case TokenizerStates.STRING_AFTER_BACKSLASH:
             if (escapedSequences?.[n]) {
+              this.appendPendingHighSurrogate()
               this.bufferedString.appendChar(escapedSequences[n])
               this.state = TokenizerStates.STRING_DEFAULT
               continue
@@ -392,26 +403,25 @@ export default class Tokenizer {
               (n >= charset.LATIN_CAPITAL_LETTER_A && n <= charset.LATIN_CAPITAL_LETTER_F) ||
               (n >= charset.LATIN_SMALL_LETTER_A && n <= charset.LATIN_SMALL_LETTER_F)
             ) {
-              const intVal = parseInt(this.unicode + String.fromCharCode(n), 16)
+              const intVal = Number.parseInt(this.unicode + String.fromCharCode(n), 16)
               if (this.highSurrogate === undefined) {
-                if (intVal >= 0xd800 && intVal <= 0xdbff) {
+                if (intVal >= 0xd8_00 && intVal <= 0xdb_ff) {
                   //<55296,56319> - highSurrogate
                   this.highSurrogate = intVal
                 } else {
-                  this.bufferedString.appendBuf(this.encoder.encode(String.fromCharCode(intVal)))
+                  this.bufferedString.appendString(String.fromCharCode(intVal))
                 }
-              } else {
-                if (intVal >= 0xdc00 && intVal <= 0xdfff) {
-                  //<56320,57343> - lowSurrogate
-                  this.bufferedString.appendBuf(
-                    this.encoder.encode(String.fromCharCode(this.highSurrogate, intVal))
-                  )
-                } else {
-                  this.bufferedString.appendBuf(
-                    this.encoder.encode(String.fromCharCode(this.highSurrogate))
-                  )
-                }
+              } else if (intVal >= 0xdc_00 && intVal <= 0xdf_ff) {
+                //<56320,57343> - lowSurrogate
+                this.bufferedString.appendString(String.fromCharCode(this.highSurrogate, intVal))
                 this.highSurrogate = undefined
+              } else {
+                this.appendPendingHighSurrogate()
+                if (intVal >= 0xd8_00 && intVal <= 0xdb_ff) {
+                  this.highSurrogate = intVal
+                } else {
+                  this.bufferedString.appendString(String.fromCharCode(intVal))
+                }
               }
               this.state = TokenizerStates.STRING_DEFAULT
               continue
@@ -633,17 +643,19 @@ export default class Tokenizer {
               // whitespace
               continue
             }
+            break
+          default:
+            break
         }
 
         throw new TokenizerError(
           `Unexpected "${String.fromCharCode(
             n
-          )}" at position "${i}" in state ${TokenizerStateToString(this.state)}`
+          )}" at position "${i}" in state ${tokenizerStateToString(this.state)}`
         )
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      this.error(err)
+    } catch (error: unknown) {
+      this.error(error instanceof Error ? error : new Error(String(error)))
     }
   }
 
@@ -687,7 +699,7 @@ export default class Tokenizer {
       default:
         this.error(
           new TokenizerError(
-            `Tokenizer ended in the middle of a token (state: ${TokenizerStateToString(
+            `Tokenizer ended in the middle of a token (state: ${tokenizerStateToString(
               this.state
             )}). Either not all the data was received or the data was invalid.`
           )
