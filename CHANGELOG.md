@@ -1,5 +1,18 @@
 # schema-stream
 
+## 4.1.0
+
+### Minor Changes
+
+- [#14](https://github.com/hack-dance/schema-stream/pull/14) [`82b9edc`](https://github.com/hack-dance/schema-stream/commit/82b9edcfd5e76134595c0a87cabd6296572c7c65) Thanks [@roodboi](https://github.com/roodboi)! - Add opt-in completed-value, byte-threshold, and final-only snapshot policies to `parse()` and `iterate()` while preserving per-input-chunk emission as the default.
+
+### Patch Changes
+
+- Move package metadata, documentation, source, tests, and releases to the dedicated
+  `hack-dance/schema-stream` repository after the v4 release from `island-ai`. Prevent
+  prototype-named streamed paths from escaping the result graph, and remove quadratic fragment joins
+  when progressively parsing long strings.
+
 ## 4.0.0
 
 ### Major Changes
