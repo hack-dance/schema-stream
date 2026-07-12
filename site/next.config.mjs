@@ -1,3 +1,4 @@
+import { resolve } from "node:path"
 import { createMDX } from "fumadocs-mdx/next"
 
 /** @type {import("next").NextConfig} */
@@ -18,6 +19,13 @@ const config = {
         source: "/:path*"
       }
     ])
+  },
+  webpack(webpackConfig) {
+    webpackConfig.resolve.alias = {
+      ...webpackConfig.resolve.alias,
+      "schema-stream": resolve(import.meta.dirname, "../dist/index.mjs")
+    }
+    return webpackConfig
   }
 }
 

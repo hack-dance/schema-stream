@@ -44,6 +44,10 @@ Parses chunked JSON into schema-shaped intermediate values. SchemaStream does no
 class SchemaStream<TSchema extends ZodObjectSchema>
 ```
 
+**Type parameters**
+
+- `TSchema` - Object schema that determines placeholders and snapshot inference.
+
 #### constructor
 
 Creates parser state and schema-derived placeholders for one streamed JSON document.
@@ -51,6 +55,11 @@ Creates parser state and schema-derived placeholders for one streamed JSON docum
 ```ts
 constructor(schema: TSchema, options?: SchemaStreamOptions<TSchema>)
 ```
+
+**Parameters**
+
+- `schema` - Zod 3, Zod 4, or Zod Mini object schema used for types and placeholders.
+- `options` - Placeholder defaults and completion reporting.
 
 #### getSchemaStub
 
@@ -60,6 +69,19 @@ Returns a new schema-derived stub using this instance's primitive defaults.
 getSchemaStub<TStubSchema extends ZodObjectSchema>(schema: TStubSchema, defaultData?: SchemaStreamDefaultData<TStubSchema>): SchemaStreamChunk<TStubSchema>
 ```
 
+**Type parameters**
+
+- `TStubSchema` - Object schema whose input type determines the returned stub.
+
+**Parameters**
+
+- `schema` - Schema used to derive nested placeholders.
+- `defaultData` - Field-level placeholders that override derived defaults.
+
+**Returns**
+
+A new partial, schema-shaped value that is independent of parser state.
+
 #### parse
 
 Creates a transform that emits cumulative JSON snapshots at the selected cadence. Omitting `snapshotPolicy` preserves the existing one-snapshot-per-input-chunk behavior.
@@ -68,6 +90,18 @@ Creates a transform that emits cumulative JSON snapshots at the selected cadence
 parse(options?: SchemaStreamParseOptions): TransformStream<Uint8Array, Uint8Array>
 ```
 
+**Parameters**
+
+- `options` - Tokenizer behavior and snapshot cadence.
+
+**Returns**
+
+A byte transform whose outputs are serialized schema-shaped snapshots.
+
+**Throws**
+
+- `TypeError` - When a byte snapshot threshold is not a positive finite integer.
+
 #### iterate
 
 Consumes streamed JSON text or bytes and yields independent schema-shaped snapshots. The completed value is still unvalidated; use the producing SDK's settled output or validate the final snapshot with the schema.
@@ -75,6 +109,24 @@ Consumes streamed JSON text or bytes and yields independent schema-shaped snapsh
 ```ts
 iterate<TChunk extends SchemaStreamInputChunk>(source: SchemaStreamSource<TChunk>, options?: SchemaStreamParseOptions): AsyncGenerator<SchemaStreamChunk<TSchema>, void, void>
 ```
+
+**Type parameters**
+
+- `TChunk` - Source chunk type, inferred from the stream or async iterable.
+
+**Parameters**
+
+- `source` - JSON text or UTF-8 bytes supplied with source backpressure.
+- `options` - Tokenizer behavior and snapshot cadence.
+
+**Returns**
+
+An async generator of independent schema-shaped values.
+
+**Throws**
+
+- `TypeError` - When the source or byte snapshot threshold is invalid.
+- `Error` - When the source fails or the JSON is malformed or truncated.
 
 ## Types
 

@@ -7,17 +7,21 @@ interface GetLLMTextOptions {
   page: SourcePage
 }
 
+const frontmatterPattern = /^---\r?\n[\s\S]*?\r?\n---\r?\n/
+
 /**
  * Converts a generated docs page into the self-contained Markdown served to AI clients.
  *
- * @param options - The Fumadocs page whose processed Markdown should be exposed.
+ * Raw staged Markdown preserves standard fences such as Mermaid while keeping rewritten site links.
+ *
+ * @param options - The Fumadocs page whose staged Markdown should be exposed.
  * @returns Markdown with a stable title and canonical source URL.
  */
 export async function getLLMText({ page }: GetLLMTextOptions): Promise<string> {
-  const processed = await page.data.getText("processed")
+  const markdown = (await page.data.getText("raw")).replace(frontmatterPattern, "")
   const title = page.data.title ?? page.slugs.at(-1) ?? "Schema Stream"
 
-  return [`# ${title}`, "", `Canonical: ${getCanonicalUrl(page.url)}`, "", processed.trim()].join(
+  return [`# ${title}`, "", `Canonical: ${getCanonicalUrl(page.url)}`, "", markdown.trim()].join(
     "\n"
   )
 }

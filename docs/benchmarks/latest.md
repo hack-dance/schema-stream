@@ -43,4 +43,4 @@ Run the checked-in benchmark harness from the repository root:
 bun run benchmark
 ```
 
-See [`tests/snapshot-policy.benchmark.mts`](../../tests/snapshot-policy.benchmark.mts) for the harness and [snapshot policies](../snapshot-policies.md#benchmark) for the methodology.
+See [`tests/snapshot-policy.benchmark.mts`](../../tests/snapshot-policy.benchmark.mts) for the harness and [contributor benchmark guidance](../../CONTRIBUTING.md#benchmarking) for the methodology.

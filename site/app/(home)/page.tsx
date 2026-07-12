@@ -1,11 +1,9 @@
 import { ArrowRightIcon, GitForkIcon, PackageIcon, PlayIcon } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import type { CSSProperties } from "react"
 import { CopyCommand } from "@/components/copy-command"
 import { ProgressiveExample } from "@/components/progressive-example"
 import { SiteHeader } from "@/components/site-header"
-import { loadLatestBenchmark } from "@/lib/benchmark-data"
 import { DESCRIPTION, GITHUB_URL, NPM_URL, SITE_URL } from "@/lib/site"
 
 const integrations = [
@@ -15,19 +13,7 @@ const integrations = [
   { href: "/docs/integrations/bun-websocket", label: "Bun WebSocket" }
 ] as const
 
-export default async function HomePage() {
-  const benchmark = await loadLatestBenchmark()
-  const longStringChunkRows = benchmark.representativeRows.filter(
-    row => row.fixture === "long-string" && row.policy === "chunk"
-  )
-  if (longStringChunkRows.length === 0) {
-    throw new Error("Benchmark evidence needs a long-string chunk-policy result")
-  }
-  const directProfiles = longStringChunkRows.map(row => ({
-    ...row,
-    throughputMiBPerSecond: benchmark.configuration.payloadSizeMiB / (row.iterateMedianMs / 1000)
-  }))
-  const maximumThroughput = Math.max(...directProfiles.map(row => row.throughputMiBPerSecond))
+export default function HomePage() {
   const softwareJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
@@ -90,54 +76,47 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="home-band benchmark-teaser">
+        <section className="home-band approach-teaser">
           <div className="band-grid">
             <div>
-              <p className="section-label">Measured hot path</p>
-              <h2>Parse once. Hand application code an object.</h2>
+              <p className="section-label">Less repeated work</p>
+              <h2>Keep parser state. Do not reparse the growing prefix.</h2>
               <p className="body-copy">
-                <code>iterate()</code> accepts streaming text or bytes and yields independent,
-                schema-shaped object snapshots. Application code can use each update immediately,
-                without decoding and parsing its own snapshot first.
+                SchemaStream consumes each incoming chunk against the parser state it already has.
+                It materializes independent object snapshots only at the cadence your application
+                chooses, then hands those objects directly to application code.
               </p>
-              <div className="benchmark-paths">
+              <div className="approach-paths">
                 <code>provider chunk → SchemaStream.iterate() → typed object snapshot</code>
-                <code>onValueComplete → conditional action while the root keeps streaming</code>
+                <code>snapshotPolicy → control materialization and update frequency</code>
               </div>
-              <p className="benchmark-caveat">
-                Committed Apple M5 Max evidence uses a 2 MiB long-string fixture, 64 KiB source
-                chunks, and five measured samples. It is a parser-path profile, not model or network
-                latency and not a standalone JSON operation claim.
-              </p>
-              <Link className="inline-arrow" href="/benchmarks">
-                Inspect all fixtures and methodology <ArrowRightIcon aria-hidden="true" />
+              <Link className="inline-arrow" href="/approach">
+                See how the approach works <ArrowRightIcon aria-hidden="true" />
               </Link>
             </div>
-            <div
-              aria-label="Measured source throughput of the direct object snapshot path"
-              className="benchmark-bars"
-              role="img"
-            >
-              {directProfiles.map(row => (
-                <div key={row.runtime}>
-                  <span>
-                    {row.runtime} · {row.iterateMedianMs.toFixed(2)} ms median · long string / chunk
-                  </span>
-                  <div
-                    style={
-                      {
-                        "--bar-size": `${Math.max(
-                          10,
-                          (row.throughputMiBPerSecond / maximumThroughput) * 100
-                        )}%`
-                      } as CSSProperties
-                    }
-                  >
-                    {Math.round(row.throughputMiBPerSecond).toLocaleString("en-US")} MiB/s
-                  </div>
+            <ol className="approach-flow">
+              <li>
+                <span>01</span>
+                <div>
+                  <strong>Arbitrary chunks arrive</strong>
+                  <p>UTF-8, strings, tokens, and nested values may split anywhere.</p>
                 </div>
-              ))}
-            </div>
+              </li>
+              <li>
+                <span>02</span>
+                <div>
+                  <strong>State advances once</strong>
+                  <p>The tokenizer and parser continue from the previous boundary.</p>
+                </div>
+              </li>
+              <li>
+                <span>03</span>
+                <div>
+                  <strong>Your code receives an object</strong>
+                  <p>Render a snapshot or react when a completed value matters.</p>
+                </div>
+              </li>
+            </ol>
           </div>
         </section>
 

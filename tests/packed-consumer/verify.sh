@@ -32,11 +32,6 @@ if [[ "$(tar -tzf "$TARBALL")" != *"package/docs/transports.md"* ]]; then
   echo "schema-stream tarball is missing transport documentation" >&2
   exit 1
 fi
-if [[ "$(tar -tzf "$TARBALL")" != *"package/docs/benchmarks/2026-07-11-apple-m5-max.json"* ]]; then
-  echo "schema-stream tarball is missing README benchmark evidence" >&2
-  exit 1
-fi
-
 cp "$FIXTURE/consumer.ts" "$FIXTURE/consumer.cjs" "$FIXTURE/tsconfig.json" "$TEMP_DIR/zod4-consumer/"
 cd "$TEMP_DIR/zod4-consumer"
 npm init -y >/dev/null

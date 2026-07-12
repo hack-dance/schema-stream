@@ -1,16 +1,17 @@
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { ArrowRightIcon, ExternalLinkIcon, TerminalSquareIcon } from "lucide-react"
-import type { Metadata } from "next"
 import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { CODESPACES_URL, examples } from "@/lib/examples"
+import { createRouteMetadata } from "@/lib/metadata"
 import { REPOSITORY_ROOT } from "@/lib/repository"
 
-export const metadata: Metadata = {
+export const metadata = createRouteMetadata({
   description: "Runnable SchemaStream examples for Bun, OpenAI Agents, Vercel AI SDK, and Mastra.",
+  path: "/examples",
   title: "Examples"
-}
+})
 
 function excerpt(source: string): string {
   const lines = source.split("\n")

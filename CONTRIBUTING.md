@@ -48,9 +48,10 @@ runtime injection, provider selection, and the exact verification contract.
 
 ## Documentation
 
-Edit `README.md`, `docs/**/*.md`, `CHANGELOG.md`, and `CONTRIBUTING.md` as the canonical sources for
-both GitHub and [schema.stream](https://schema.stream/). Do not edit the ignored
-`site/content/docs/` staging directory directly.
+Edit `README.md`, public guides under `docs/`, and `CHANGELOG.md` as the canonical sources for both
+GitHub and [schema.stream](https://schema.stream/). Do not edit the ignored `site/content/docs/`
+staging directory directly. `CONTRIBUTING.md`, `docs/benchmarks/`, and `archive/` are intentionally
+repository-only material.
 
 Regenerate checked-in API and benchmark reference pages after changing exported TSDoc, public
 exports, or benchmark evidence:
@@ -66,9 +67,10 @@ bun run docs:check
 bun run docs:build
 ```
 
-For local documentation work, `bun run docs:dev` prepares the canonical Markdown and serves the
-site at `http://127.0.0.1:3401`. Browser examples must remain credential-free; live-provider
-examples read user-owned secrets only from the server or Codespaces environment.
+For local documentation work, `bun run docs:dev` prepares the canonical Markdown, serves the site at
+`http://127.0.0.1:3401`, and keeps staged pages synchronized as canonical Markdown, exported TSDoc,
+benchmark evidence, or documentation assets change. Browser examples must remain credential-free;
+live-provider examples read user-owned secrets only from the server or Codespaces environment.
 
 ## Benchmarking
 

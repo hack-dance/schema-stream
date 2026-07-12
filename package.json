@@ -38,7 +38,6 @@
   },
   "files": [
     "dist/**",
-    "docs/benchmarks/2026-07-11-apple-m5-max.json",
     "docs/completion-events.md",
     "docs/integration-testing.md",
     "docs/snapshot-policies.md",
@@ -54,22 +53,24 @@
   },
   "packageManager": "bun@1.3.14",
   "workspaces": [
+    ".",
     "site"
   ],
   "scripts": {
     "benchmark": "bun tests/snapshot-policy.benchmark.mts",
     "benchmark:snapshots": "bun tests/snapshot-policy.benchmark.mts",
     "build": "tsup && tsc --project tsconfig.build.json",
-    "check": "bun run lint && bun run type-check && bun run test && bun run test:packed && bun run docs:check && bun run docs:build",
+    "check": "bun run lint && bun run type-check && bun run release:check && bun run test && bun run test:packed && bun run docs:check && bun run docs:build",
     "changeset": "changeset",
     "clean": "rm -rf coverage dist node_modules",
     "dev": "tsup --watch",
     "docs:build": "bun run docs:generate && bun run docs:prepare && bun run build && bun run --cwd site build",
     "docs:check": "bun scripts/docs/generate.ts --check",
-    "docs:dev": "bun run docs:generate && bun run docs:prepare && bun run build && bun run --cwd site dev",
+    "docs:dev": "bun run docs:generate && bun run docs:prepare && bun run build && bun scripts/docs/dev.ts",
     "docs:generate": "bun scripts/docs/generate.ts",
     "docs:prepare": "bun scripts/docs/prepare.ts",
     "docs:start": "bun run --cwd site start",
+    "docs:watch": "bun scripts/docs/watch.ts",
     "example:mastra": "bun examples/mastra.ts",
     "example:progressive": "bun examples/progressive-json.ts",
     "example:sdk": "bun examples/sdk-mocks.ts",
@@ -81,11 +82,12 @@
     "lint:fix": "ultracite fix",
     "prepack": "bun run build",
     "release": "bun run build && changeset publish",
+    "release:check": "changeset status",
     "test": "bun test --timeout=25000",
     "test:coverage": "bun test --coverage --timeout=25000",
     "test:live": "bun test tests/live-model.e2e.test.ts --timeout=300000",
     "test:packed": "bash tests/packed-consumer/verify.sh",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --project scripts/docs/tsconfig.json --noEmit",
     "version": "changeset version"
   },
   "devDependencies": {

@@ -64,6 +64,8 @@ const FIXTURE: Dashboard = {
   title: "Release readiness"
 }
 
+const MILESTONE_KEYS = FIXTURE.milestones.map(({ label }) => `milestone:${label}`)
+
 const POLICIES = [
   { label: "Every character", policy: { mode: "chunk" } as const, value: "chunk" },
   { label: "Complete values", policy: { mode: "value" } as const, value: "value" },
@@ -218,6 +220,11 @@ export function PlaygroundClient() {
 
   const json = JSON.stringify(snapshot, null, 2)
   const milestones = snapshot.milestones ?? []
+  const milestoneRows = milestones.map((milestone, index) => ({
+    key: MILESTONE_KEYS[index] ?? `milestone:${index}`,
+    milestone
+  }))
+  const completedMilestoneCount = milestones.filter(milestone => milestone.complete).length
   const owners = snapshot.owners ? Object.entries(snapshot.owners) : []
 
   return (
@@ -238,6 +245,9 @@ export function PlaygroundClient() {
           ))}
         </fieldset>
         <div className="run-status">
+          <span aria-live="polite" className="sr-only">
+            {isRunning ? "Fixture streaming" : `Fixture complete with ${snapshotCount} snapshots`}
+          </span>
           <span className={isRunning ? "is-running" : "is-complete"}>
             {isRunning ? "Streaming" : "Complete"}
           </span>
@@ -277,16 +287,16 @@ export function PlaygroundClient() {
           <div className="dashboard-section">
             <div className="dashboard-section-heading">
               <h2>Milestones</h2>
-              <span>{milestones.length} ready</span>
+              <span>{completedMilestoneCount} complete</span>
             </div>
             <div className="milestone-list">
               <AnimatePresence initial={false}>
-                {milestones.map(milestone => (
+                {milestoneRows.map(({ key, milestone }) => (
                   <motion.div
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0 }}
                     initial={{ opacity: 0, x: -8 }}
-                    key={`${milestone.label}-${milestone.owner}`}
+                    key={key}
                     layout
                   >
                     <span className={milestone.complete ? "complete" : "pending"} />
@@ -375,7 +385,7 @@ export function PlaygroundClient() {
                 <ChevronDownIcon aria-hidden="true" />
               )}
             </button>
-            <pre aria-live="polite">
+            <pre>
               <code>{json}</code>
             </pre>
           </section>

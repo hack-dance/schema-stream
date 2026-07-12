@@ -9,13 +9,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: page.url === "/docs" ? 0.9 : 0.7,
     url: getCanonicalUrl(page.url)
   }))
+  const publicRoutes: MetadataRoute.Sitemap = [
+    { path: "/", priority: 1 },
+    { path: "/approach", priority: 0.8 },
+    { path: "/examples", priority: 0.8 },
+    { path: "/playground", priority: 0.8 }
+  ].map(route => ({
+    changeFrequency: "weekly",
+    priority: route.priority,
+    url: getCanonicalUrl(route.path)
+  }))
 
-  return [
-    {
-      changeFrequency: "weekly",
-      priority: 1,
-      url: getCanonicalUrl("/")
-    },
-    ...docs
-  ]
+  return [...publicRoutes, ...docs]
 }

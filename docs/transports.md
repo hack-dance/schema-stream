@@ -106,15 +106,18 @@ For most provider-backed applications, parse once on the server and send complet
 messages to the UI:
 
 ```mermaid
-flowchart LR
-  provider["Provider text stream"] --> parser["SchemaStream on server"]
-  parser --> cadence["Snapshot policy and coalescing"]
-  cadence --> encode["Serialize one versioned message"]
-  encode --> socket["SSE or WebSocket"]
-  socket --> browser["JSON.parse and render"]
-  provider --> final["Authoritative SDK result"]
-  final --> validate["Final schema validation"]
-  validate --> encode
+flowchart TB
+  provider["Provider deltas"]
+  subgraph server["Trusted server boundary"]
+    direction LR
+    parser["SchemaStream"] --> cadence["Snapshot policy"] --> message["Versioned snapshot"]
+    validate["Final validation"] --> message
+  end
+  provider --> parser
+  provider -. "authoritative result" .-> validate
+  message --> transport{"Application transport"}
+  transport --> sse["SSE event"] --> browser["JSON.parse and render"]
+  transport --> websocket["WebSocket message"] --> browser
 ```
 
 A useful wire envelope separates progress from the final validated result:
@@ -175,9 +178,10 @@ Large documents are a separate concern. Whichever transport is selected, prefer 
 completion events plus one authoritative final snapshot when repeated full objects dominate network
 and browser parse cost.
 
-## Steelman: why WebSocket often wins here
+## When WebSocket is a good fit
 
-For an interactive provider-backed interface, the case for WebSocket is strong:
+WebSocket fits an interactive provider-backed interface when progress and controls share one
+connection:
 
 - The API credential, provider SDK, `AbortController`, and SchemaStream already belong on the server.
 - One serialized snapshot envelope maps directly to one WebSocket message. The browser only rejects
@@ -190,8 +194,8 @@ For an interactive provider-backed interface, the case for WebSocket is strong:
   repository example demonstrates the complete flow rather than only a transport fragment.
 
 For that shape of application, WebSocket is often simpler than an SSE connection plus separate
-`POST` or `DELETE` endpoints for commands. The argument is about one bidirectional application
-protocol, not about WebSocket being the only way to preserve JSON boundaries.
+`POST` or `DELETE` endpoints for commands. This is a bidirectional application-protocol choice;
+WebSocket is not required to preserve JSON boundaries.
 
 The browser control path stays small:
 
@@ -214,12 +218,12 @@ An SSE design can be equally correct, but usually splits that flow across a requ
 run, an `EventSource` that receives progress, and another request that cancels it. Whether one socket
 or several HTTP endpoints are simpler depends on the rest of the application's protocol.
 
-## Adversarial review
+## Tradeoffs to account for
 
-The strongest counterargument is that SSE already solves downstream framing. A server can run
-SchemaStream and put each complete snapshot in one SSE event. `EventSource` also supplies automatic
-reconnection and sends `Last-Event-ID`, which can make one-way progress and replay simpler than a
-custom WebSocket resume protocol. Infrequent cancellation can use a separate HTTP request.
+SSE already solves downstream framing. A server can run SchemaStream and put each complete snapshot
+in one SSE event. `EventSource` also supplies automatic reconnection and sends `Last-Event-ID`, which
+can make one-way progress and replay simpler than a custom WebSocket resume protocol. Infrequent
+cancellation can use a separate HTTP request.
 
 WebSocket does not remove lifecycle work:
 
@@ -254,9 +258,8 @@ Raw Fetch is also viable when ordinary request semantics matter. It can send a r
 custom headers, then return NDJSON or another framed snapshot protocol. Its cost is a small browser
 record decoder and application-defined reconnection, not necessarily a partial JSON parser.
 
-The weak claim to avoid is "SSE breaks JSON boundaries, therefore only WebSocket works." The equally
-weak opposite is "WebSocket is needless complexity." Parse provider deltas once on the server and
-emit complete, versioned application messages. Prefer WebSocket when the workflow is genuinely
+JSON framing alone does not decide the browser transport. Parse provider deltas once on the server
+and emit complete, versioned application messages. Prefer WebSocket when the workflow is genuinely
 bidirectional. Prefer SSE when progress is one-way and its reconnect model is valuable.
 
 ## Control cumulative cost

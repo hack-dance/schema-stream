@@ -149,10 +149,4 @@ cumulative history, but it becomes expensive on large documents.
 Prefer `onValueComplete` for new completion listeners. Keep `onKeyComplete` only when the UI needs
 its character-level progress or complete history contract.
 
-Compare callback scaling locally with:
-
-```sh
-bun run benchmark --completion-scaling
-```
-
 Snapshot emission is configured separately. See [Snapshot policies](./snapshot-policies.md).

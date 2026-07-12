@@ -31,5 +31,6 @@ older release was developed.
 
 ## Source monorepo follow-up
 
-The exact island-ai cleanup is documented in [docs/island-ai-follow-up.md](docs/island-ai-follow-up.md).
-It is deliberately not part of this repository's branch.
+The historical island-ai cleanup plan is retained in
+[archive/island-ai-follow-up.md](archive/island-ai-follow-up.md). It is repository history rather
+than published package documentation.

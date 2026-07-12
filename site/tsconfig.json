@@ -10,7 +10,8 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./*"],
-      "collections/*": ["./.source/*"]
+      "collections/*": ["./.source/*"],
+      "schema-stream": ["../dist/index.d.ts"]
     },
     "plugins": [{ "name": "next" }],
     "rootDir": "..",

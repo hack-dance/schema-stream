@@ -26,6 +26,7 @@ import {
   type Symbol as CompilerSymbol,
   type Diagnostic,
   DiagnosticCategory,
+  type JSDocTagInfo,
   NodeBuilderFlags,
   type Project,
   SymbolFlags
@@ -39,14 +40,32 @@ import {
 
 type ApiKind = "Class" | "Enum" | "Function" | "Interface" | "Type" | "Value"
 
-type ApiMember = {
+type ApiNamedDocumentation = {
   description: string
+  name: string
+}
+
+type ApiThrowDocumentation = {
+  description: string
+  type: string
+}
+
+type ApiDocumentation = {
+  description: string
+  parameters: ApiNamedDocumentation[]
+  returns: string[]
+  throws: ApiThrowDocumentation[]
+  typeParameters: ApiNamedDocumentation[]
+}
+
+type ApiMember = {
+  documentation: ApiDocumentation
   name: string
   signature: string
 }
 
 type ApiExport = {
-  description: string
+  documentation: ApiDocumentation
   kind: ApiKind
   members: ApiMember[]
   name: string
@@ -68,6 +87,9 @@ const signatureFlags =
 const documentationWhitespacePattern = /\s+/g
 const jsDocPattern = /\/\*\*([\s\S]*?)\*\/\s*$/
 const jsDocLinePattern = /^\s*\* ?/
+const jsDocTagPattern = /^@(\S+)(?:\s+(.*))?$/
+const namedDocumentationPattern = /^(\S+)(?:\s+-\s+|\s+)?([\s\S]*)$/
+const throwDocumentationPattern = /^\{([^}]+)\}(?:\s+-\s+|\s+)?([\s\S]*)$/
 const trailingSemicolonPattern = /;$/
 const anchorPunctuationPattern = /[^a-z0-9 -]/g
 const anchorWhitespacePattern = /\s+/g
@@ -113,10 +135,69 @@ async function createPublicProject(): Promise<PublicProject> {
   }
 }
 
-async function getDescription(symbol: CompilerSymbol, checker: Checker): Promise<string> {
-  return (await checker.getDocumentationCommentOfSymbol(symbol))
-    .replace(documentationWhitespacePattern, " ")
-    .trim()
+function normalizeDocumentationText(value: string): string {
+  return value.replace(documentationWhitespacePattern, " ").trim()
+}
+
+function parseNamedDocumentation(text: string): ApiNamedDocumentation {
+  const normalized = normalizeDocumentationText(text)
+  const match = namedDocumentationPattern.exec(normalized)
+  return {
+    description: match?.[2]?.trim() ?? "",
+    name: match?.[1] ?? normalized
+  }
+}
+
+function parseThrowDocumentation(text: string): ApiThrowDocumentation {
+  const normalized = normalizeDocumentationText(text)
+  const match = throwDocumentationPattern.exec(normalized)
+  return {
+    description: match?.[2]?.trim() ?? normalized,
+    type: match?.[1] ?? "Error"
+  }
+}
+
+function createDocumentation({
+  description,
+  tags
+}: {
+  description: string
+  tags: readonly JSDocTagInfo[]
+}): ApiDocumentation {
+  const documentation: ApiDocumentation = {
+    description: normalizeDocumentationText(description),
+    parameters: [],
+    returns: [],
+    throws: [],
+    typeParameters: []
+  }
+
+  for (const tag of tags) {
+    const text = tag.text?.trim() ?? ""
+    const tagName = tag.name.toLowerCase()
+    if (tagName === "param") {
+      documentation.parameters.push(parseNamedDocumentation(text))
+    } else if (tagName === "return" || tagName === "returns") {
+      documentation.returns.push(normalizeDocumentationText(text))
+    } else if (tagName === "throws" || tagName === "exception") {
+      documentation.throws.push(parseThrowDocumentation(text))
+    } else if (tagName === "typeparam" || tagName === "template") {
+      documentation.typeParameters.push(parseNamedDocumentation(text))
+    }
+  }
+
+  return documentation
+}
+
+async function getSymbolDocumentation(
+  symbol: CompilerSymbol,
+  checker: Checker
+): Promise<ApiDocumentation> {
+  const [description, tags] = await Promise.all([
+    checker.getDocumentationCommentOfSymbol(symbol),
+    checker.getJsDocTagsOfSymbol(symbol)
+  ])
+  return createDocumentation({ description, tags })
 }
 
 async function resolveExportSymbol(
@@ -174,19 +255,40 @@ function getMemberName(member: ClassElement): string | undefined {
   return member.name.getText()
 }
 
-function getNodeDocumentation(node: Node): string {
+function getNodeDocumentation(node: Node): ApiDocumentation {
   const sourceFile = node.getSourceFile()
   const leadingText = sourceFile.text.slice(node.getFullStart(), node.getStart(sourceFile))
   const comment = jsDocPattern.exec(leadingText)?.[1]
   if (!comment) {
-    return ""
+    return createDocumentation({ description: "", tags: [] })
   }
-  return comment
-    .split("\n")
-    .map(line => line.replace(jsDocLinePattern, "").trim())
-    .filter(line => line.length > 0)
-    .filter(line => !line.startsWith("@"))
-    .join(" ")
+
+  const descriptionLines: string[] = []
+  const tags: JSDocTagInfo[] = []
+  for (const rawLine of comment.split("\n")) {
+    const line = rawLine.replace(jsDocLinePattern, "").trim()
+    if (line.length === 0) {
+      continue
+    }
+
+    const tagMatch = jsDocTagPattern.exec(line)
+    if (tagMatch) {
+      tags.push({ name: tagMatch[1], text: tagMatch[2] })
+      continue
+    }
+
+    const previousTag = tags.at(-1)
+    if (previousTag) {
+      tags[tags.length - 1] = {
+        name: previousTag.name,
+        text: [previousTag.text, line].filter(Boolean).join(" ")
+      }
+    } else {
+      descriptionLines.push(line)
+    }
+  }
+
+  return createDocumentation({ description: descriptionLines.join(" "), tags })
 }
 
 /**
@@ -235,12 +337,12 @@ async function getClassMembers({
       const memberSymbol = isMethodDeclaration(member)
         ? await checker.getSymbolAtLocation(member.name)
         : undefined
-      const description = memberSymbol
-        ? await getDescription(memberSymbol, checker)
+      const documentation = memberSymbol
+        ? await getSymbolDocumentation(memberSymbol, checker)
         : getNodeDocumentation(member)
 
       return {
-        description,
+        documentation,
         name,
         signature: isMethodDeclaration(member) ? `${name}${rendered}` : rendered
       }
@@ -317,11 +419,17 @@ async function getApiExports(): Promise<ApiExport[]> {
         const sourcePath = relative(repositoryRoot, declaration.getSourceFile().fileName)
           .split(sep)
           .join("/")
-        const exportDescription = await getDescription(exportSymbol, checker)
-        const description = exportDescription || (await getDescription(symbol, checker))
+        const [exportDocumentation, symbolDocumentation] = await Promise.all([
+          getSymbolDocumentation(exportSymbol, checker),
+          getSymbolDocumentation(symbol, checker)
+        ])
+        const documentation = {
+          ...symbolDocumentation,
+          description: exportDocumentation.description || symbolDocumentation.description
+        }
 
         return {
-          description,
+          documentation,
           kind: getApiKind(declaration),
           members: isClassDeclaration(declaration)
             ? await getClassMembers({ checker, declaration, project })
@@ -349,13 +457,46 @@ function headingAnchor(name: string): string {
     .replace(anchorWhitespacePattern, "-")
 }
 
+function renderNamedDocumentation(entries: ApiNamedDocumentation[]): string {
+  return entries
+    .map(entry => `- \`${entry.name}\`${entry.description ? ` - ${entry.description}` : ""}`)
+    .join("\n")
+}
+
+function renderDocumentationDetails(documentation: ApiDocumentation): string {
+  const sections: string[] = []
+  if (documentation.typeParameters.length > 0) {
+    sections.push(
+      `**Type parameters**\n\n${renderNamedDocumentation(documentation.typeParameters)}`
+    )
+  }
+  if (documentation.parameters.length > 0) {
+    sections.push(`**Parameters**\n\n${renderNamedDocumentation(documentation.parameters)}`)
+  }
+  if (documentation.returns.length > 0) {
+    sections.push(`**Returns**\n\n${documentation.returns.join("\n\n")}`)
+  }
+  if (documentation.throws.length > 0) {
+    const throws = documentation.throws
+      .map(entry => `- \`${entry.type}\`${entry.description ? ` - ${entry.description}` : ""}`)
+      .join("\n")
+    sections.push(`**Throws**\n\n${throws}`)
+  }
+  return sections.length > 0 ? `\n\n${sections.join("\n\n")}` : ""
+}
+
 function renderMember(member: ApiMember): string {
-  const description = member.description ? `\n${member.description}\n` : ""
-  return `#### ${member.name}\n${description}\n\`\`\`ts\n${member.signature}\n\`\`\``
+  const description = member.documentation.description
+    ? `\n${member.documentation.description}\n`
+    : ""
+  const details = renderDocumentationDetails(member.documentation)
+  return `#### ${member.name}\n${description}\n\`\`\`ts\n${member.signature}\n\`\`\`${details}`
 }
 
 function renderExport(apiExport: ApiExport): string {
-  const description = apiExport.description || "No public description is currently available."
+  const description =
+    apiExport.documentation.description || "No public description is currently available."
+  const documentationDetails = renderDocumentationDetails(apiExport.documentation)
   const members =
     apiExport.members.length > 0 ? `\n\n${apiExport.members.map(renderMember).join("\n\n")}` : ""
 
@@ -367,14 +508,14 @@ ${description}
 
 \`\`\`ts
 ${apiExport.signature}
-\`\`\`${members}`
+\`\`\`${documentationDetails}${members}`
 }
 
 function renderPublicApi(exports: ApiExport[]): string {
   const exportTable = exports
     .map(
       apiExport =>
-        `| [\`${apiExport.name}\`](#${headingAnchor(apiExport.name)}) | ${apiExport.kind} | ${apiExport.description || "No description"} |`
+        `| [\`${apiExport.name}\`](#${headingAnchor(apiExport.name)}) | ${apiExport.kind} | ${apiExport.documentation.description || "No description"} |`
     )
     .join("\n")
   const groups = new Map<ApiKind, ApiExport[]>()

@@ -2,6 +2,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layo
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { getMDXComponents } from "@/components/mdx"
+import { createRouteMetadata } from "@/lib/metadata"
 import { source } from "@/lib/source"
 
 interface DocsRouteProps {
@@ -37,16 +38,11 @@ export async function generateMetadata({ params }: DocsRouteProps): Promise<Meta
     notFound()
   }
 
-  return {
-    alternates: { canonical: page.url },
+  return createRouteMetadata({
     description: page.data.description,
-    openGraph: {
-      description: page.data.description,
-      title: page.data.title,
-      url: page.url
-    },
+    path: page.url,
     title: page.data.title
-  }
+  })
 }
 
 export function generateStaticParams(): Array<{ slug?: string[] }> {

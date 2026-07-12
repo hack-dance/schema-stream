@@ -11,7 +11,7 @@ type StagedDocument = {
 const canonicalDocsRoot = join(repositoryRoot, "docs")
 const stagedDocsRoot = join(repositoryRoot, "site/content/docs")
 const generatedAssetsRoot = join(repositoryRoot, "site/public/generated")
-const excludedCanonicalDocuments = new Set([join(canonicalDocsRoot, "island-ai-follow-up.md")])
+const repositoryOnlyDocsPrefixes = [`${join(canonicalDocsRoot, "benchmarks")}${sep}`]
 const githubRepositoryUrl = "https://github.com/hack-dance/schema-stream"
 const headingPattern = /^#\s+(.+?)\s*#?\s*$/m
 const titleFormattingPattern = /[`*_]/g
@@ -25,6 +25,8 @@ const paragraphPattern = /\n\s*\n/
 const nonProsePattern = /^(?:#|<!--|\[!|!\[|```|~~~|[-*+]\s|\d+\.\s|\|)/
 const leadingWhitespacePattern = /^\s+/
 const canonicalLinkPattern = /!?\[[^\]]*\]\(([^)\s]+)(?:\s+["'][^)]*["'])?\)/g
+const referenceDefinitionPattern =
+  /^((?: {0,3})\[[^\]\n]+\]:[ \t]+)(<[^>\n]+>|[^ \t\r\n]+)([^\r\n]*)$/gm
 const nonLocalTargetPattern = /^(?:#|[a-z][a-z0-9+.-]*:|\/\/)/i
 const markdownExtensionPattern = /\.md$/i
 const indexRoutePattern = /(?:^|\/)index$/
@@ -44,11 +46,8 @@ const preferredNavigationOrder: Readonly<Record<string, readonly string[]>> = {
     "transports",
     "integration-testing",
     "reference",
-    "benchmarks",
-    "changelog",
-    "contributing"
+    "changelog"
   ],
-  benchmarks: ["index", "latest"],
   guides: ["index", "snapshot-policies", "completion-events", "transports"],
   integrations: [
     "index",
@@ -63,11 +62,7 @@ const preferredNavigationOrder: Readonly<Record<string, readonly string[]>> = {
 
 const fallbackDescriptions: Readonly<Record<string, string>> = {
   "CHANGELOG.md": "Release history and versioned changes for Schema Stream.",
-  "CONTRIBUTING.md":
-    "Development, verification, benchmarking, and release guidance for contributors.",
   "README.md": "Progressively parse streamed JSON into typed, schema-shaped snapshots.",
-  "docs/benchmarks/latest.md":
-    "The latest checked-in Schema Stream performance measurements and methodology.",
   "docs/reference/api.md": "Generated TypeScript reference for every public Schema Stream export."
 }
 
@@ -81,15 +76,18 @@ function normalizeDestination(relativePath: string): string {
   return toPosixPath(join(dirname(relativePath), parsedBasename))
 }
 
-function collectCanonicalDocuments(): Array<{ destinationRelative: string; source: string }> {
+/** Returns only Markdown sources intended for the public schema.stream corpus. */
+export function collectCanonicalDocuments(): Array<{
+  destinationRelative: string
+  source: string
+}> {
   const documents = [
     { destinationRelative: "index.md", source: join(repositoryRoot, "README.md") },
-    { destinationRelative: "changelog.md", source: join(repositoryRoot, "CHANGELOG.md") },
-    { destinationRelative: "contributing.md", source: join(repositoryRoot, "CONTRIBUTING.md") }
+    { destinationRelative: "changelog.md", source: join(repositoryRoot, "CHANGELOG.md") }
   ]
   const glob = new Bun.Glob("**/*.md")
   for (const source of glob.scanSync({ absolute: true, cwd: canonicalDocsRoot, onlyFiles: true })) {
-    if (excludedCanonicalDocuments.has(source)) {
+    if (repositoryOnlyDocsPrefixes.some(prefix => source.startsWith(prefix))) {
       continue
     }
     documents.push({
@@ -201,23 +199,49 @@ async function buildRepositoryTargets(
   )
   const targetPaths = new Set<string>()
   for (const { content, source } of sourceDocuments) {
-    canonicalLinkPattern.lastIndex = 0
-    for (const match of content.matchAll(canonicalLinkPattern)) {
-      const [, rawTarget] = match
-      if (!(rawTarget && !nonLocalTargetPattern.test(rawTarget))) {
-        continue
+    for (const { pattern, targetIndex } of [
+      { pattern: canonicalLinkPattern, targetIndex: 1 },
+      { pattern: referenceDefinitionPattern, targetIndex: 2 }
+    ]) {
+      pattern.lastIndex = 0
+      for (const match of content.matchAll(pattern)) {
+        const rawTarget = match[targetIndex]
+        const target = rawTarget ? resolveLocalTarget({ rawTarget, source }) : undefined
+        if (target) {
+          targetPaths.add(target)
+        }
       }
-      const [pathPart] = rawTarget.split("#", 1)
-      if (!pathPart) {
-        continue
-      }
-      targetPaths.add(resolve(dirname(source), decodeURIComponent(pathPart)))
     }
   }
   const targets = await Promise.all(
     [...targetPaths].map(async target => [target, await isDirectory(target)] as const)
   )
   return new Map(targets)
+}
+
+function unwrapTarget(rawTarget: string): { target: string; wrapped: boolean } {
+  const wrapped = rawTarget.startsWith("<") && rawTarget.endsWith(">")
+  return {
+    target: wrapped ? rawTarget.slice(1, -1) : rawTarget,
+    wrapped
+  }
+}
+
+function resolveLocalTarget({
+  rawTarget,
+  source
+}: {
+  rawTarget: string
+  source: string
+}): string | undefined {
+  const { target } = unwrapTarget(rawTarget)
+  if (nonLocalTargetPattern.test(target)) {
+    return
+  }
+
+  const hashIndex = target.indexOf("#")
+  const pathPart = hashIndex === -1 ? target : target.slice(0, hashIndex)
+  return pathPart ? resolve(dirname(source), decodeURIComponent(pathPart)) : undefined
 }
 
 function routeRelativePath(from: string, to: string): string {
@@ -232,11 +256,51 @@ function routeRelativePath(from: string, to: string): string {
   return withoutIndex.startsWith(".") ? withoutIndex : `./${withoutIndex}`
 }
 
+function rewriteTarget({
+  destination,
+  rawTarget,
+  repositoryTargets,
+  source,
+  sourceToDestination
+}: {
+  destination: string
+  rawTarget: string
+  repositoryTargets: ReadonlyMap<string, boolean>
+  source: string
+  sourceToDestination: ReadonlyMap<string, string>
+}): string {
+  const { target: unwrappedTarget, wrapped } = unwrapTarget(rawTarget)
+  const target = resolveLocalTarget({ rawTarget, source })
+  if (!target) {
+    return rawTarget
+  }
+
+  const hashIndex = unwrappedTarget.indexOf("#")
+  const hash = hashIndex === -1 ? "" : unwrappedTarget.slice(hashIndex)
+  const stagedTarget =
+    sourceToDestination.get(target) ?? sourceToDestination.get(join(target, "README.md"))
+  let rewritten: string | undefined
+  if (stagedTarget) {
+    rewritten = `${routeRelativePath(destination, stagedTarget)}${hash}`
+  } else {
+    const repositoryRelative = toPosixPath(relative(repositoryRoot, target))
+    if (!repositoryRelative.startsWith("..") && repositoryTargets.has(target)) {
+      const view = repositoryTargets.get(target) ? "tree" : "blob"
+      rewritten = `${githubRepositoryUrl}/${view}/main/${repositoryRelative}${hash}`
+    }
+  }
+
+  if (!rewritten) {
+    return rawTarget
+  }
+  return wrapped ? `<${rewritten}>` : rewritten
+}
+
 /**
  * Rewrites only staging links. Canonical documents keep repository-relative links, while relocated
  * site pages point to staged routes or to a stable GitHub source URL for non-page artifacts.
  */
-function rewriteLinks({
+export function rewriteStagedLinks({
   content,
   destination,
   repositoryTargets,
@@ -249,35 +313,25 @@ function rewriteLinks({
   source: string
   sourceToDestination: ReadonlyMap<string, string>
 }): string {
-  return content.replace(
-    stagedLinkPattern,
-    (match, prefix: string, rawTarget: string, suffix: string): string => {
-      if (nonLocalTargetPattern.test(rawTarget)) {
-        return match
-      }
+  const rewriteMatch = (
+    match: string,
+    prefix: string,
+    rawTarget: string,
+    suffix: string
+  ): string => {
+    const rewrittenTarget = rewriteTarget({
+      destination,
+      rawTarget,
+      repositoryTargets,
+      source,
+      sourceToDestination
+    })
+    return rewrittenTarget === rawTarget ? match : `${prefix}${rewrittenTarget}${suffix}`
+  }
 
-      const hashIndex = rawTarget.indexOf("#")
-      const pathPart = hashIndex === -1 ? rawTarget : rawTarget.slice(0, hashIndex)
-      const hash = hashIndex === -1 ? "" : rawTarget.slice(hashIndex)
-      if (!pathPart) {
-        return match
-      }
-
-      const target = resolve(dirname(source), decodeURIComponent(pathPart))
-      const stagedTarget =
-        sourceToDestination.get(target) ?? sourceToDestination.get(join(target, "README.md"))
-      if (stagedTarget) {
-        return `${prefix}${routeRelativePath(destination, stagedTarget)}${hash}${suffix}`
-      }
-
-      const repositoryRelative = toPosixPath(relative(repositoryRoot, target))
-      if (repositoryRelative.startsWith("..") || !repositoryTargets.has(target)) {
-        return match
-      }
-      const view = repositoryTargets.get(target) ? "tree" : "blob"
-      return `${prefix}${githubRepositoryUrl}/${view}/main/${repositoryRelative}${hash}${suffix}`
-    }
-  )
+  return content
+    .replace(stagedLinkPattern, rewriteMatch)
+    .replace(referenceDefinitionPattern, rewriteMatch)
 }
 
 function navigationRank(directory: string, page: string): number {
@@ -362,7 +416,7 @@ async function main(): Promise<void> {
       const destination = join(stagedDocsRoot, canonical.destinationRelative)
       const sourceContent = await Bun.file(canonical.source).text()
       const normalizedSourceContent = normalizeStagedMedia(sourceContent, canonical.source)
-      const content = rewriteLinks({
+      const content = rewriteStagedLinks({
         content: addStagingFrontmatter(normalizedSourceContent, canonical.source),
         destination,
         repositoryTargets,
@@ -385,4 +439,6 @@ async function main(): Promise<void> {
   )
 }
 
-await main()
+if (import.meta.main) {
+  await main()
+}

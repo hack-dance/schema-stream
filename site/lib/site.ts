@@ -7,6 +7,6 @@ export const DESCRIPTION =
 export const primaryNavigation = [
   { href: "/docs", label: "Docs" },
   { href: "/examples", label: "Examples" },
-  { href: "/benchmarks", label: "Benchmarks" },
+  { href: "/approach", label: "Approach" },
   { href: "/docs/changelog", label: "Changelog" }
 ] as const
