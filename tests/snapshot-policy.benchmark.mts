@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer"
-import { spawn } from "node:child_process"
+import { type ExecFileException, execFile } from "node:child_process"
 import { resolve as resolvePath } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
@@ -110,6 +110,12 @@ interface WorkerOutput {
   streaming: StreamBenchmarkRow[]
 }
 
+interface ChildProcessOutput {
+  error: ExecFileException | null
+  stderr: string
+  stdout: string
+}
+
 interface BenchmarkOutput {
   completionScaling: CompletionScalingRow[]
   configuration: {
@@ -183,6 +189,7 @@ const policyDefinitions: Record<PolicyName, PolicyDefinition> = {
 const fixtureNames = ["long-string", "object-heavy"] as const
 const policyNames = ["chunk", "value", "bytes-256kb", "bytes-1mb", "final"] as const
 const runtimeNames = ["bun", "node"] as const
+const maximumChildProcessOutputBytes = 16 * 1024 * 1024
 
 const helpText = `schema-stream snapshot benchmark
 
@@ -205,8 +212,9 @@ Options:
   -h, --help                      Show this help
 
 The default module is built before measurement. Native JSON operations are reference
-costs, not feature-equivalent alternatives. The roundtrip streaming row is the
-like-for-like baseline for object snapshots materialized through serialized UTF-8.`
+costs, not feature-equivalent alternatives. The serialized baseline uses parse()
+(JSON.stringify + UTF-8 encode) followed by decode + JSON.parse for each snapshot.
+The direct candidate uses iterate() to emit the same object snapshot without that round trip.`
 
 function parseNumberFlag({ name, value }: { name: string; value: string | undefined }): number {
   const parsed = Number(value)
@@ -214,6 +222,33 @@ function parseNumberFlag({ name, value }: { name: string; value: string | undefi
     throw new TypeError(`${name} must be a finite number`)
   }
   return parsed
+}
+
+/**
+ * Runs benchmark subprocesses through the callback API so Node and Bun share one buffered output
+ * contract. The explicit buffer cap prevents an unexpected worker from consuming unbounded memory.
+ */
+function executeFile({
+  args,
+  executable
+}: {
+  args: string[]
+  executable: string
+}): Promise<ChildProcessOutput> {
+  return new Promise(resolve => {
+    execFile(
+      executable,
+      args,
+      {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        maxBuffer: maximumChildProcessOutputBytes
+      },
+      (error, stdout, stderr) => {
+        resolve({ error, stderr, stdout })
+      }
+    )
+  })
 }
 
 function parseListFlag<TName extends string>({
@@ -379,30 +414,15 @@ async function buildDefaultModule(options: BenchmarkOptions): Promise<void> {
     return
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.env.BUN_BINARY ?? "bun", ["run", "build"], {
-      cwd: repositoryRoot,
-      stdio: ["ignore", "pipe", "pipe"]
-    })
-    let stdout = ""
-    let stderr = ""
-    child.stdout.setEncoding("utf8")
-    child.stderr.setEncoding("utf8")
-    child.stdout.on("data", chunk => {
-      stdout += chunk
-    })
-    child.stderr.on("data", chunk => {
-      stderr += chunk
-    })
-    child.on("error", reject)
-    child.on("close", code => {
-      if (code === 0) {
-        resolve()
-        return
-      }
-      reject(new Error(`benchmark build exited with code ${code}:\n${stdout}${stderr}`))
-    })
+  const result = await executeFile({
+    args: ["run", "build"],
+    executable: process.env.BUN_BINARY ?? "bun"
   })
+  if (result.error) {
+    throw new Error(`benchmark build failed:\n${result.stdout}${result.stderr}`, {
+      cause: result.error
+    })
+  }
 }
 
 function serializeJson(value: Record<string, unknown>): string {
@@ -1224,35 +1244,18 @@ async function spawnWorker({
     args.push("--completion-scaling")
   }
 
-  return await new Promise<WorkerOutput>((resolve, reject) => {
-    const child = spawn(executable, args, { stdio: ["ignore", "pipe", "pipe"] })
-    let stdout = ""
-    let stderr = ""
-    child.stdout.setEncoding("utf8")
-    child.stderr.setEncoding("utf8")
-    child.stdout.on("data", chunk => {
-      stdout += chunk
-    })
-    child.stderr.on("data", chunk => {
-      stderr += chunk
-    })
-    child.on("error", reject)
-    child.on("close", code => {
-      if (code !== 0) {
-        reject(new Error(`${runtime} benchmark exited with code ${code}:\n${stderr}`))
-        return
-      }
-      try {
-        resolve(JSON.parse(stdout) as WorkerOutput)
-      } catch (error) {
-        reject(
-          new Error(`${runtime} benchmark returned invalid JSON:\n${stdout}\n${stderr}`, {
-            cause: error
-          })
-        )
-      }
-    })
-  })
+  const result = await executeFile({ args, executable })
+  if (result.error) {
+    throw new Error(`${runtime} benchmark failed:\n${result.stderr}`, { cause: result.error })
+  }
+  try {
+    return JSON.parse(result.stdout) as WorkerOutput
+  } catch (error) {
+    throw new Error(
+      `${runtime} benchmark returned invalid JSON:\n${result.stdout}\n${result.stderr}`,
+      { cause: error }
+    )
+  }
 }
 
 function formatMebibytes(bytes: number): string {
@@ -1305,9 +1308,10 @@ function printNativeReference(output: BenchmarkOutput): void {
 
 function printStreamingSummary(output: BenchmarkOutput): void {
   console.log("\nStreaming object snapshots")
-  console.log(
-    "roundtrip = parse + UTF-8 decode + JSON.parse per snapshot; speedup = roundtrip / iterate"
-  )
+  console.log("baseline   parse() [JSON.stringify + UTF-8 encode] -> decode -> JSON.parse")
+  console.log("candidate  iterate() -> direct independent object snapshot")
+  console.log("speedup    serialized baseline / direct candidate (same parser, fixture, policy)")
+  console.log("            not a standalone JSON.parse or JSON.stringify comparison")
 
   for (const runtime of output.configuration.runtimes) {
     for (const fixture of output.configuration.fixtures) {
@@ -1332,9 +1336,9 @@ function printStreamingSummary(output: BenchmarkOutput): void {
             policy,
             snapshots: iterate.emittedSnapshots,
             "parse ms": formatMilliseconds(parse.medianMs),
-            "roundtrip ms": formatMilliseconds(roundTrip.medianMs),
-            "iterate ms": formatMilliseconds(iterate.medianMs),
-            speedup: `${iterate.speedupVsRoundTrip.toFixed(2)}x`,
+            "serialized ms": formatMilliseconds(roundTrip.medianMs),
+            "direct ms": formatMilliseconds(iterate.medianMs),
+            "direct speedup": `${iterate.speedupVsRoundTrip.toFixed(2)}x`,
             "serialized MiB": formatMebibytes(roundTrip.actualEmittedBytes),
             "avoided MiB": formatMebibytes(iterate.serializationAvoidedBytes)
           }

@@ -1,0 +1,41 @@
+{
+  "name": "Schema Stream",
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile",
+    "args": {
+      "BUN_VERSION": "1.3.14"
+    }
+  },
+  "containerEnv": {
+    "SCHEMA_STREAM_EXAMPLE_PORT": "3400",
+    "SCHEMA_STREAM_LIVE_E2E": "0"
+  },
+  "forwardPorts": [3400],
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "16gb"
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
+  "portsAttributes": {
+    "3400": {
+      "label": "Schema Stream WebSocket example",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "bun install --frozen-lockfile",
+  "remoteUser": "node",
+  "runArgs": ["--init"],
+  "secrets": {
+    "OPENAI_API_KEY": {
+      "description": "Optional personal OpenAI API key for explicitly selected live examples. Fixture examples and the default test suite do not need it.",
+      "documentationUrl": "https://platform.openai.com/api-keys"
+    }
+  },
+  "updateRemoteUserUID": true,
+  "waitFor": "postCreateCommand"
+}

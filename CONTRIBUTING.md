@@ -46,6 +46,30 @@ The opt-in live provider matrix fails closed when explicitly enabled without its
 credential variables. See [`docs/integration-testing.md`](./docs/integration-testing.md) for secure
 runtime injection, provider selection, and the exact verification contract.
 
+## Documentation
+
+Edit `README.md`, `docs/**/*.md`, `CHANGELOG.md`, and `CONTRIBUTING.md` as the canonical sources for
+both GitHub and [schema.stream](https://schema.stream/). Do not edit the ignored
+`site/content/docs/` staging directory directly.
+
+Regenerate checked-in API and benchmark reference pages after changing exported TSDoc, public
+exports, or benchmark evidence:
+
+```sh
+bun run docs:generate
+```
+
+Verify generated-file drift and Markdown links, then build the package and production docs site:
+
+```sh
+bun run docs:check
+bun run docs:build
+```
+
+For local documentation work, `bun run docs:dev` prepares the canonical Markdown and serves the
+site at `http://127.0.0.1:3401`. Browser examples must remain credential-free; live-provider
+examples read user-owned secrets only from the server or Codespaces environment.
+
 ## Benchmarking
 
 Run the Bun and Node snapshot benchmark after changes to parser hot paths, snapshot materialization,

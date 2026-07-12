@@ -27,6 +27,7 @@ const defaultModel = "gpt-5.6-luna"
 const maxPromptLength = 800
 const decisionPath = ["triage", "requiresApproval"] as const
 const fixtureBrief = "Customer-facing release with three open checks and an approval gate."
+const trailingSlashPattern = /\/$/
 
 const dashboardSchema = z.object({
   brief: z.string(),
@@ -140,8 +141,11 @@ type AgentExecution = {
 const openAiModel = process.env.SCHEMA_STREAM_EXAMPLE_MODEL?.trim() || defaultModel
 const openAiAvailable = Boolean(process.env.OPENAI_API_KEY?.trim())
 const port = readPort(process.env.SCHEMA_STREAM_EXAMPLE_PORT)
-const allowedHost = `127.0.0.1:${port}`
-const allowedOrigin = `http://${allowedHost}`
+const browserBoundary = readBrowserBoundary({
+  port,
+  publicOrigin: process.env.SCHEMA_STREAM_EXAMPLE_ORIGIN
+})
+const { allowedHost, allowedOrigin, listenHostname, websocketOrigin } = browserBoundary
 const websocketToken = crypto.randomUUID()
 const runner = new Runner({
   traceIncludeSensitiveData: false,
@@ -165,6 +169,64 @@ function readPort(rawPort: string | undefined): number {
     throw new Error("SCHEMA_STREAM_EXAMPLE_PORT must be an integer from 1024 through 65535")
   }
   return parsed
+}
+
+type BrowserBoundary = {
+  allowedHost: string
+  allowedOrigin: string
+  listenHostname: "0.0.0.0" | "127.0.0.1"
+  websocketOrigin: string
+}
+
+/**
+ * Resolves the browser capability boundary. External binding is allowed only with one exact HTTPS
+ * origin, which supports authenticated development proxies such as GitHub Codespaces without
+ * weakening the default loopback-only server.
+ */
+function readBrowserBoundary({
+  port: configuredPort,
+  publicOrigin
+}: {
+  port: number
+  publicOrigin: string | undefined
+}): BrowserBoundary {
+  if (!publicOrigin?.trim()) {
+    const host = `127.0.0.1:${configuredPort}`
+    return {
+      allowedHost: host,
+      allowedOrigin: `http://${host}`,
+      listenHostname: "127.0.0.1",
+      websocketOrigin: `ws://${host}`
+    }
+  }
+
+  const rawOrigin = publicOrigin.trim()
+  let parsed: URL
+  try {
+    parsed = new URL(rawOrigin)
+  } catch (error) {
+    throw new TypeError("SCHEMA_STREAM_EXAMPLE_ORIGIN must be an absolute HTTPS origin", {
+      cause: error
+    })
+  }
+
+  const hasOriginOnly =
+    parsed.protocol === "https:" &&
+    parsed.username === "" &&
+    parsed.password === "" &&
+    parsed.pathname === "/" &&
+    parsed.search === "" &&
+    parsed.hash === ""
+  if (!hasOriginOnly || parsed.origin !== rawOrigin.replace(trailingSlashPattern, "")) {
+    throw new TypeError("SCHEMA_STREAM_EXAMPLE_ORIGIN must be an absolute HTTPS origin")
+  }
+
+  return {
+    allowedHost: parsed.host,
+    allowedOrigin: parsed.origin,
+    listenHostname: "0.0.0.0",
+    websocketOrigin: `wss://${parsed.host}`
+  }
 }
 
 /** Narrows decoded client frames before any property is trusted. */
@@ -653,14 +715,14 @@ const server = Bun.serve<SocketData>({
     return new Response(Bun.file(`${import.meta.dir}/${asset.file}`), {
       headers: {
         "Cache-Control": "no-store",
-        "Content-Security-Policy": `default-src 'self'; connect-src 'self' ws://${allowedHost}; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
+        "Content-Security-Policy": `default-src 'self'; connect-src 'self' ${websocketOrigin}; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
         "Content-Type": asset.contentType,
         "Referrer-Policy": "no-referrer",
         "X-Content-Type-Options": "nosniff"
       }
     })
   },
-  hostname: "127.0.0.1",
+  hostname: listenHostname,
   port,
   websocket: {
     close(socket) {
@@ -681,6 +743,9 @@ const server = Bun.serve<SocketData>({
 })
 
 process.stdout.write(`SchemaStream WebSocket UI: ${server.url}\n`)
+if (listenHostname !== "127.0.0.1") {
+  process.stdout.write(`Browser origin: ${allowedOrigin}\n`)
+}
 process.stdout.write(
   `OpenAI mode: ${openAiAvailable ? `available (${openAiModel})` : "disabled"}\n`
 )

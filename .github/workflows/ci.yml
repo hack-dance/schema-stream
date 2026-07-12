@@ -42,8 +42,11 @@ jobs:
       - name: Test with coverage
         run: bun run test:coverage
 
-      - name: Build
-        run: bun run build
+      - name: Verify documentation sources
+        run: bun run docs:check
+
+      - name: Build package and documentation site
+        run: bun run docs:build
 
       - name: Verify packed consumers
         run: bun run test:packed

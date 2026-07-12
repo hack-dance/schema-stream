@@ -4,6 +4,9 @@
 [![CI](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml/badge.svg)](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml)
 [![Follow @dimitrikennedy](https://img.shields.io/twitter/follow/dimitrikennedy?style=social&labelColor=000000)](https://twitter.com/dimitrikennedy)
 
+[Documentation](https://schema.stream/docs) · [Examples](https://schema.stream/examples) ·
+[Benchmarks](https://schema.stream/benchmarks) · [Playground](https://schema.stream/playground)
+
 Parse JSON while it is still arriving. `schema-stream` turns a Web Stream or async iterable into
 typed, schema-shaped snapshots, so a UI can render partial strings, nested objects, and arrays
 before the response is complete.
@@ -143,22 +146,25 @@ Run the repeatable Bun and Node benchmark from a repository checkout:
 bun run benchmark
 ```
 
-The benchmark compares three feature-aligned paths for each snapshot policy: serialized byte
-snapshots from `parse()`, those same snapshots materialized through UTF-8 decoding and `JSON.parse`,
-and direct object snapshots from `iterate()`. The terminal summary reports the speedup of
-`iterate()` over the serialized round-trip baseline and the cumulative serialization it avoids.
+The benchmark compares three feature-aligned paths for each snapshot policy. `parse()` materializes
+each byte snapshot through `JSON.stringify` and UTF-8 encoding. The serialized baseline then
+decodes each snapshot and applies `JSON.parse`; the direct candidate uses `iterate()` to emit the
+same independent object snapshot without that round trip. The terminal summary reports the speedup
+of the direct candidate over the serialized baseline and the cumulative serialization it avoids.
 
 It also reports normalized `JSON.stringify`, UTF-8 encoding, and `JSON.parse` costs as native
 runtime references. Those isolated operations are not presented as equivalent alternatives to
-progressive schema-shaped parsing. Results are local synthetic measurements; the runtime versions,
-fixture size, chunk size, warmups, and sample count printed by the command define each result.
+progressive schema-shaped parsing, and the benchmark does not claim SchemaStream is faster than
+standalone `JSON.parse` or `JSON.stringify`. Results are local synthetic measurements; the runtime
+versions, fixture size, chunk size, warmups, and sample count printed by the command define each
+result.
 
 Representative local results from an Apple M5 Max arm64 host on July 11, 2026 are shown below.
 These are medians from the default 2 MiB fixtures, 64 KiB chunks, one warmup, and five measured
 runs. The [machine-readable evidence](./docs/benchmarks/2026-07-11-apple-m5-max.json) retains the raw
 samples, host, baseline revision, validation method, and benchmark configuration.
 
-| Runtime | Fixture / policy | Roundtrip | `iterate()` | Speedup | Serialization avoided |
+| Runtime | Fixture / policy | Serialized round trip | Direct object | Speedup | Serialization avoided |
 | --- | --- | ---: | ---: | ---: | ---: |
 | Bun 1.3.14 | long string / chunk | 11.94 ms | 1.53 ms | 7.80x | 33.00 MiB |
 | Bun 1.3.14 | long string / final | 1.95 ms | 1.29 ms | 1.52x | 2.00 MiB |
@@ -372,6 +378,9 @@ bun run format
 bun run lint
 bun run examples
 bun run benchmark
+bun run docs:dev
+bun run docs:check
+bun run docs:build
 bun run check
 ```
 
@@ -381,7 +390,14 @@ declarations with TypeScript 7.0.2. TypeScript is a development-only dependency,
 
 Ultracite and Biome own formatting and linting. `bun run format` applies safe fixes, `bun run lint`
 checks the repository without writing, and `bun run check` includes linting before type checks,
-tests, and packed-consumer verification.
+tests, packed-consumer verification, generated-doc drift checks, and the production docs build.
+
+The checked-in Markdown in `README.md`, `docs/`, `CHANGELOG.md`, and `CONTRIBUTING.md` is the
+documentation source of truth for both GitHub and [schema.stream](https://schema.stream). Public API
+reference Markdown is generated from exported TSDoc, benchmark summaries are generated from the
+latest checked-in JSON evidence, and `site/content/docs` is an ignored build-stage copy. Run
+`bun run docs:generate` after changing exports, public TSDoc, or benchmark evidence; never edit the
+staged site content directly.
 
 `test:packed` installs the generated tarball into clean consumers and verifies ESM, CommonJS,
 Zod 4/Mini, Zod 3, OpenAI Agents SDK, Mastra, and Vercel AI SDK compatibility with TypeScript 5.9

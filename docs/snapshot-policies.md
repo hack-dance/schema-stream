@@ -109,9 +109,9 @@ The streaming tables exercise `chunk`, `value`, 256 KiB, 1 MiB, and `final` poli
 paths:
 
 - `parse` incrementally parses the source and emits serialized UTF-8 snapshots.
-- `roundtrip` runs the same parser and policy, then decodes and applies `JSON.parse` to every
-  emitted snapshot. This is the feature-aligned baseline for the former serialized
-  object-materialization path.
+- `roundtrip` runs the same parser and policy. `parse()` materializes each snapshot with
+  `JSON.stringify` and UTF-8 encoding, then the consumer decodes it and applies `JSON.parse`. This
+  is the feature-aligned baseline for the former serialized object-materialization path.
 - `iterate` incrementally parses the same source and emits independent object snapshots directly.
 
 `speedup` is the round-trip median divided by the `iterate` median. Serialized and avoided MiB are
@@ -123,7 +123,7 @@ timed windows.
 
 This comparison isolates materialization strategy on the current parser. It does not claim to
 reproduce every implementation detail of an older release, and it does not compare SchemaStream to
-`JSON.stringify` as though they performed the same work.
+standalone `JSON.parse` or `JSON.stringify` as though they performed the same work.
 
 ### Options and evidence
 
