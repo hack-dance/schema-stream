@@ -7,9 +7,6 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="site-header-inner">
         <Link className="site-brand" href="/">
-          <span aria-hidden="true" className="brand-mark">
-            {"{}"}
-          </span>
           <span>schema-stream</span>
         </Link>
 

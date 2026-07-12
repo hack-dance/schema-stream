@@ -41,6 +41,9 @@ export default function HomePage() {
               <Link className="primary-link" href="/docs">
                 Read the docs <ArrowRightIcon aria-hidden="true" />
               </Link>
+              <Link className="text-link" href="/playground">
+                <PlayIcon aria-hidden="true" /> Try the playground
+              </Link>
               <a className="text-link" href={GITHUB_URL} rel="noreferrer" target="_blank">
                 <GitForkIcon aria-hidden="true" /> GitHub
               </a>

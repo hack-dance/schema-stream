@@ -103,14 +103,14 @@ export function ProgressiveExample() {
 
   return (
     <section
-      aria-label="Character-by-character schema-shaped JSON snapshot"
+      aria-label="Progressively parsed schema-shaped JSON snapshot"
       className="progressive-example"
     >
       <div className="progressive-example-bar">
         <span>
           <span aria-hidden="true" className="status-dot" /> snapshot {snapshotCount}
         </span>
-        <span>one character per chunk</span>
+        <span>parsing every chunk</span>
       </div>
       <pre>
         <code>{JSON.stringify(snapshot, null, 2)}</code>

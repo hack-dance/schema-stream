@@ -173,19 +173,6 @@ a {
   white-space: nowrap;
 }
 
-.brand-mark {
-  align-items: center;
-  background: var(--inverse-surface);
-  border-radius: 4px;
-  color: var(--inverse-text);
-  display: inline-flex;
-  font-family: var(--font-code);
-  font-size: 11px;
-  height: 25px;
-  justify-content: center;
-  width: 25px;
-}
-
 .desktop-nav {
   align-items: center;
   display: flex;
