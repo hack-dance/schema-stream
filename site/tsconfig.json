@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "declaration": false,
+    "incremental": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "module": "ESNext",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./*"],
+      "collections/*": ["./.source/*"],
+      "schema-stream": ["../dist/index.d.ts"]
+    },
+    "plugins": [{ "name": "next" }],
+    "rootDir": "..",
+    "types": ["bun", "react", "react-dom"]
+  },
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", ".source/**/*.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

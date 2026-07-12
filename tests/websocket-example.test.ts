@@ -4,6 +4,8 @@ import { join } from "node:path"
 const repositoryRoot = join(import.meta.dir, "..")
 const port = 38_000 + (process.pid % 10_000)
 const origin = `http://127.0.0.1:${port}`
+const forwardedPort = port + 1
+const forwardedOrigin = `https://schema-stream-${forwardedPort}.app.github.dev`
 const BunWebSocketClient = WebSocket as unknown as {
   new (url: string | URL, options?: Bun.WebSocketOptions): WebSocket
 }
@@ -21,13 +23,20 @@ interface CompleteMessage {
 }
 
 /** Starts the example without forwarding repository credentials to the child process. */
-function startExampleServer(): Bun.Subprocess {
+function startExampleServer({
+  configuredPort = port,
+  publicOrigin
+}: {
+  configuredPort?: number
+  publicOrigin?: string
+} = {}): Bun.Subprocess {
   return Bun.spawn([process.execPath, "examples/websocket-ui/server.ts"], {
     cwd: repositoryRoot,
     env: {
       HOME: process.env.HOME ?? "",
       PATH: process.env.PATH ?? "",
-      SCHEMA_STREAM_EXAMPLE_PORT: String(port),
+      SCHEMA_STREAM_EXAMPLE_ORIGIN: publicOrigin ?? "",
+      SCHEMA_STREAM_EXAMPLE_PORT: String(configuredPort),
       TMPDIR: process.env.TMPDIR ?? "/tmp"
     },
     stderr: "pipe",
@@ -36,10 +45,16 @@ function startExampleServer(): Bun.Subprocess {
 }
 
 /** Waits for the bound loopback listener without assuming process startup timing. */
-async function waitForServer(): Promise<void> {
+async function waitForServer({
+  headers,
+  serverOrigin = origin
+}: {
+  headers?: HeadersInit
+  serverOrigin?: string
+} = {}): Promise<void> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
-      const response = await fetch(origin)
+      const response = await fetch(serverOrigin, { headers })
       if (response.ok) {
         return
       }
@@ -151,6 +166,46 @@ test("WebSocket example enforces its local capability boundary and completes a r
     expect(result.complete.output.brief).toBe(
       "Customer-facing release with three open checks and an approval gate."
     )
+  } finally {
+    server.kill()
+    await server.exited
+  }
+}, 20_000)
+
+test("WebSocket example supports one exact HTTPS development-proxy origin", async () => {
+  const forwardedHost = new URL(forwardedOrigin).host
+  const loopbackOrigin = `http://127.0.0.1:${forwardedPort}`
+  const headers = { Host: forwardedHost }
+  const server = startExampleServer({
+    configuredPort: forwardedPort,
+    publicOrigin: forwardedOrigin
+  })
+
+  try {
+    await waitForServer({ headers, serverOrigin: loopbackOrigin })
+
+    const page = await fetch(loopbackOrigin, { headers })
+    expect(page.status).toBe(200)
+    expect(page.headers.get("content-security-policy")).toContain(`wss://${forwardedHost}`)
+
+    const loopbackHost = await fetch(loopbackOrigin)
+    expect(loopbackHost.status).toBe(403)
+
+    const sessionResponse = await fetch(`${loopbackOrigin}/session`, { headers })
+    expect(sessionResponse.status).toBe(200)
+    const session = (await sessionResponse.json()) as SessionResponse
+
+    const badOrigin = await fetch(
+      `${loopbackOrigin}/ws?token=${encodeURIComponent(session.token)}`,
+      { headers: { ...headers, Origin: "https://attacker.example" } }
+    )
+    expect(badOrigin.status).toBe(403)
+
+    const validPreflight = await fetch(
+      `${loopbackOrigin}/ws?token=${encodeURIComponent(session.token)}`,
+      { headers: { ...headers, Origin: forwardedOrigin } }
+    )
+    expect(validPreflight.status).toBe(426)
   } finally {
     server.kill()
     await server.exited

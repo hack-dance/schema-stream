@@ -4,6 +4,9 @@
 [![CI](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml/badge.svg)](https://github.com/hack-dance/schema-stream/actions/workflows/ci.yml)
 [![Follow @dimitrikennedy](https://img.shields.io/twitter/follow/dimitrikennedy?style=social&labelColor=000000)](https://twitter.com/dimitrikennedy)
 
+[Documentation](https://schema.stream/docs) · [Examples](https://schema.stream/examples) ·
+[Approach](https://schema.stream/approach) · [Playground](https://schema.stream/playground)
+
 Parse JSON while it is still arriving. `schema-stream` turns a Web Stream or async iterable into
 typed, schema-shaped snapshots, so a UI can render partial strings, nested objects, and arrays
 before the response is complete.
@@ -19,7 +22,7 @@ Snapshots are progressive parser output, not validation results. `schema-stream`
 types and initial placeholders, but it does not validate partial or final values. Validate the
 settled value with your schema or use the producing SDK's validated result.
 
-![Terminal demo of schema-stream filling a typed object as JSON arrives](https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif)
+![Schema Stream progressing from raw JSON chunks to completion events, snapshot policies, and a materialized dashboard](https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif)
 
 ## One stream, many snapshots
 
@@ -134,53 +137,6 @@ bun run example:websocket
 See the [transport guide](./docs/transports.md) and the repository's
 [Bun WebSocket UI](./examples/websocket-ui/) for an interactive localhost visualization of the
 message protocol and snapshot-policy controls.
-
-## Performance
-
-Run the repeatable Bun and Node benchmark from a repository checkout:
-
-```bash
-bun run benchmark
-```
-
-The benchmark compares three feature-aligned paths for each snapshot policy: serialized byte
-snapshots from `parse()`, those same snapshots materialized through UTF-8 decoding and `JSON.parse`,
-and direct object snapshots from `iterate()`. The terminal summary reports the speedup of
-`iterate()` over the serialized round-trip baseline and the cumulative serialization it avoids.
-
-It also reports normalized `JSON.stringify`, UTF-8 encoding, and `JSON.parse` costs as native
-runtime references. Those isolated operations are not presented as equivalent alternatives to
-progressive schema-shaped parsing. Results are local synthetic measurements; the runtime versions,
-fixture size, chunk size, warmups, and sample count printed by the command define each result.
-
-Representative local results from an Apple M5 Max arm64 host on July 11, 2026 are shown below.
-These are medians from the default 2 MiB fixtures, 64 KiB chunks, one warmup, and five measured
-runs. The [machine-readable evidence](./docs/benchmarks/2026-07-11-apple-m5-max.json) retains the raw
-samples, host, baseline revision, validation method, and benchmark configuration.
-
-| Runtime | Fixture / policy | Roundtrip | `iterate()` | Speedup | Serialization avoided |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Bun 1.3.14 | long string / chunk | 11.94 ms | 1.53 ms | 7.80x | 33.00 MiB |
-| Bun 1.3.14 | long string / final | 1.95 ms | 1.29 ms | 1.52x | 2.00 MiB |
-| Bun 1.3.14 | object heavy / chunk | 310.36 ms | 298.24 ms | 1.04x | 35.00 MiB |
-| Bun 1.3.14 | object heavy / final | 93.33 ms | 87.88 ms | 1.06x | 2.00 MiB |
-| Node 24.18.0 | long string / chunk | 100.60 ms | 2.73 ms | 36.83x | 33.00 MiB |
-| Node 24.18.0 | long string / final | 7.64 ms | 2.63 ms | 2.91x | 2.00 MiB |
-| Node 24.18.0 | object heavy / chunk | 339.35 ms | 245.88 ms | 1.38x | 35.00 MiB |
-| Node 24.18.0 | object heavy / final | 55.63 ms | 52.18 ms | 1.07x | 2.00 MiB |
-
-Use `bun run benchmark --help` for filters, verbose ranges, and machine-readable JSON. See the
-[benchmark methodology](./docs/snapshot-policies.md#benchmark) for the fixtures and timing
-boundaries.
-
-Completion callback scaling is measured separately so the normal suite stays quick:
-
-```bash
-bun run benchmark --completion-scaling
-```
-
-That mode doubles nested record counts and compares parsing with no callback, delta-based
-`onValueComplete`, and cumulative-history `onKeyComplete`.
 
 ## OpenAI Agents SDK
 
@@ -371,7 +327,9 @@ bun install
 bun run format
 bun run lint
 bun run examples
-bun run benchmark
+bun run docs:dev
+bun run docs:check
+bun run docs:build
 bun run check
 ```
 
@@ -381,7 +339,14 @@ declarations with TypeScript 7.0.2. TypeScript is a development-only dependency,
 
 Ultracite and Biome own formatting and linting. `bun run format` applies safe fixes, `bun run lint`
 checks the repository without writing, and `bun run check` includes linting before type checks,
-tests, and packed-consumer verification.
+tests, packed-consumer verification, generated-doc drift checks, and the production docs build.
+
+The checked-in Markdown in `README.md`, public guides under `docs/`, and `CHANGELOG.md` is the
+documentation source of truth for both GitHub and [schema.stream](https://schema.stream). Public API
+reference Markdown is generated from exported TSDoc, and `site/content/docs` is an ignored
+build-stage copy. Run `bun run docs:generate` after changing exports or public TSDoc; never edit the
+staged site content directly. Contributor guidance and engineering evidence remain repository-only
+material.
 
 `test:packed` installs the generated tarball into clean consumers and verifies ESM, CommonJS,
 Zod 4/Mini, Zod 3, OpenAI Agents SDK, Mastra, and Vercel AI SDK compatibility with TypeScript 5.9

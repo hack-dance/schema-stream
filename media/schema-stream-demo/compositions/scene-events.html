@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <template id="scene-events-template">
+      <style>
+        @font-face {
+          font-family: "Geist";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/Geist-Variable.woff2") format("woff2");
+        }
+
+        @font-face {
+          font-family: "Geist Mono";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/GeistMono-Variable.woff2") format("woff2");
+        }
+
+        #root {
+          background: #ffffff;
+          color: #111111;
+          font-family: "Geist", sans-serif;
+          height: 1080px;
+          overflow: hidden;
+          position: absolute;
+          width: 1920px;
+        }
+
+        * {
+          box-sizing: border-box;
+          letter-spacing: 0;
+        }
+
+        .scene-content {
+          display: flex;
+          flex-direction: column;
+          gap: 34px;
+          height: 100%;
+          padding: 76px 92px 82px;
+          position: relative;
+          width: 100%;
+        }
+
+        .edge-rule {
+          background: #dddddd;
+          position: absolute;
+        }
+
+        .edge-rule.left {
+          height: 1080px;
+          left: 92px;
+          top: 0;
+          width: 2px;
+        }
+
+        .edge-rule.right {
+          height: 1080px;
+          right: 92px;
+          top: 0;
+          width: 2px;
+        }
+
+        .edge-rule.top {
+          height: 2px;
+          left: 0;
+          top: 72px;
+          width: 1920px;
+        }
+
+        .topline {
+          align-items: center;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .brand,
+        .scene-label,
+        .eyebrow,
+        .event-index,
+        .event-path,
+        .event-value,
+        .code-panel,
+        .decision-meta,
+        .footer-meta {
+          font-family: "Geist Mono", monospace;
+        }
+
+        .brand {
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .scene-label {
+          color: #646464;
+          font-size: 20px;
+          text-transform: uppercase;
+        }
+
+        .scene-label strong {
+          color: #0057d9;
+          margin-right: 18px;
+        }
+
+        .headline-row {
+          align-items: end;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        h1 {
+          font-size: 70px;
+          font-weight: 650;
+          line-height: 1;
+          margin: 0;
+        }
+
+        .subhead {
+          color: #3d3d3d;
+          font-size: 28px;
+          line-height: 1.35;
+          margin: 0;
+          max-width: 560px;
+        }
+
+        .workspace {
+          display: grid;
+          flex: 1;
+          gap: 30px;
+          grid-template-columns: 660px minmax(0, 1fr);
+          min-height: 0;
+        }
+
+        .ledger,
+        .object-panel {
+          border: 2px solid #dddddd;
+          border-radius: 7px;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .panel-head {
+          align-items: center;
+          background: #f7f7f5;
+          border-bottom: 2px solid #dddddd;
+          display: flex;
+          height: 60px;
+          justify-content: space-between;
+          padding: 0 22px;
+        }
+
+        .eyebrow {
+          color: #646464;
+          font-size: 17px;
+          text-transform: uppercase;
+        }
+
+        .panel-status {
+          align-items: center;
+          color: #08783e;
+          display: flex;
+          font-family: "Geist Mono", monospace;
+          font-size: 17px;
+          gap: 10px;
+        }
+
+        .status-dot {
+          background: #1eae63;
+          border-radius: 50%;
+          height: 10px;
+          width: 10px;
+        }
+
+        .event-list {
+          padding: 14px 20px;
+        }
+
+        .event-row {
+          align-items: center;
+          border-bottom: 2px solid #ececea;
+          display: grid;
+          gap: 16px;
+          grid-template-columns: 42px minmax(0, 1fr) auto;
+          min-height: 82px;
+          padding: 12px 4px;
+        }
+
+        .event-row:last-child {
+          border-bottom: 0;
+        }
+
+        .event-row.highlight {
+          background: #eef9f2;
+          border: 2px solid #b8e1c7;
+          border-radius: 5px;
+          margin: 8px -6px;
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+
+        .event-index {
+          color: #646464;
+          font-size: 17px;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .event-path {
+          color: #0057d9;
+          font-size: 19px;
+          font-weight: 700;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .event-value {
+          color: #3d3d3d;
+          font-size: 18px;
+        }
+
+        .decision {
+          align-items: center;
+          background: #10291b;
+          border: 2px solid #285e3c;
+          border-radius: 6px;
+          color: #ffffff;
+          display: flex;
+          justify-content: space-between;
+          margin: 18px 20px 20px;
+          min-height: 96px;
+          padding: 22px 24px;
+        }
+
+        .decision-copy strong {
+          display: block;
+          font-size: 27px;
+          font-weight: 650;
+          margin-bottom: 5px;
+        }
+
+        .decision-copy span {
+          color: #b7e7be;
+          font-size: 20px;
+        }
+
+        .decision-meta {
+          border: 2px solid #65d695;
+          border-radius: 4px;
+          color: #65d695;
+          font-size: 18px;
+          padding: 10px 12px;
+          text-transform: uppercase;
+        }
+
+        .object-panel {
+          background: #101010;
+          border-color: #111111;
+          color: #f4f4f4;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .object-panel .panel-head {
+          background: #181818;
+          border-color: #303030;
+        }
+
+        .object-panel .eyebrow {
+          color: #a8a8a8;
+        }
+
+        .revision {
+          color: #9fc1ff;
+          font-family: "Geist Mono", monospace;
+          font-size: 17px;
+        }
+
+        .code-panel {
+          display: grid;
+          flex: 1;
+          font-size: 22px;
+          grid-template-columns: minmax(0, 1fr) 240px;
+          line-height: 1.52;
+          min-height: 0;
+        }
+
+        pre {
+          margin: 0;
+          overflow: hidden;
+          padding: 28px 34px;
+          white-space: pre-wrap;
+        }
+
+        .key {
+          color: #9fc1ff;
+        }
+
+        .string {
+          color: #b7e7be;
+        }
+
+        .number {
+          color: #d9e6ff;
+        }
+
+        .path-map {
+          border-left: 2px solid #303030;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          justify-content: center;
+          padding: 28px 20px;
+        }
+
+        .path-node {
+          border: 2px solid #3d3d3d;
+          border-radius: 5px;
+          color: #a8a8a8;
+          font-size: 17px;
+          padding: 14px;
+          position: relative;
+        }
+
+        .path-node.active {
+          border-color: #65d695;
+          color: #b7e7be;
+        }
+
+        .path-node + .path-node::before {
+          background: #3d3d3d;
+          content: "";
+          height: 24px;
+          left: 28px;
+          position: absolute;
+          top: -26px;
+          width: 2px;
+        }
+
+        .footer-meta {
+          align-items: center;
+          border-top: 2px solid #dddddd;
+          color: #646464;
+          display: flex;
+          font-size: 17px;
+          justify-content: space-between;
+          padding-top: 18px;
+        }
+
+        .footer-meta strong {
+          color: #111111;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-events" data-width="1920" data-height="1080">
+        <span class="edge-rule left"></span>
+        <span class="edge-rule right"></span>
+        <span class="edge-rule top"></span>
+
+        <div class="scene-content">
+          <div class="topline">
+            <div class="brand">schema-stream</div>
+            <div class="scene-label"><strong>02</strong> react at completion</div>
+          </div>
+
+          <div class="headline-row">
+            <h1>Make decisions mid-stream.</h1>
+            <p class="subhead">Completed values arrive once, with their exact nested path.</p>
+          </div>
+
+          <div class="workspace">
+            <section class="ledger">
+              <div class="panel-head">
+                <span class="eyebrow">Completion events</span>
+                <span class="panel-status"><span class="status-dot"></span>listening</span>
+              </div>
+              <div class="event-list">
+                <div class="event-row">
+                  <span class="event-index">01</span>
+                  <code class="event-path">$.metrics.readiness</code>
+                  <code class="event-value">82</code>
+                </div>
+                <div class="event-row">
+                  <span class="event-index">02</span>
+                  <code class="event-path">$.metrics.coverage</code>
+                  <code class="event-value">94</code>
+                </div>
+                <div class="event-row highlight">
+                  <span class="event-index">03</span>
+                  <code class="event-path">$.metrics.risk</code>
+                  <code class="event-value">"medium"</code>
+                </div>
+                <div class="event-row">
+                  <span class="event-index">04</span>
+                  <code class="event-path">$.metrics</code>
+                  <code class="event-value">{...}</code>
+                </div>
+              </div>
+              <div class="decision">
+                <div class="decision-copy">
+                  <strong>Continue release checks</strong>
+                  <span>risk completed before the document</span>
+                </div>
+                <span class="decision-meta">condition met</span>
+              </div>
+            </section>
+
+            <section class="object-panel">
+              <div class="panel-head">
+                <span class="eyebrow">Current JSON snapshot</span>
+                <span class="revision">revision 71</span>
+              </div>
+              <div class="code-panel">
+                <pre>{
+  <span class="key">"title"</span>: <span class="string">"Release readiness"</span>,
+  <span class="key">"summary"</span>: <span class="string">"The release is technically ready..."</span>,
+  <span class="key">"metrics"</span>: {
+    <span class="key">"readiness"</span>: <span class="number">82</span>,
+    <span class="key">"coverage"</span>: <span class="number">94</span>,
+    <span class="key">"risk"</span>: <span class="string" id="s2-risk">"medium"</span>
+  },
+  <span class="key">"milestones"</span>: [{
+    <span class="key">"complete"</span>: true,
+    <span class="key">"label"</span>: <span class="string">"API contract"</span>
+  }]
+}</pre>
+                <div class="path-map">
+                  <div class="path-node">metrics</div>
+                  <div class="path-node active">risk</div>
+                  <div class="path-node active">"medium"</div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="footer-meta">
+            <span>child paths emit before their parent</span>
+            <strong>onValueComplete({ path, value })</strong>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {}
+        const tl = gsap.timeline({ paused: true })
+
+        tl.fromTo(".topline", { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.12)
+        tl.fromTo("h1", { opacity: 0, x: -48 }, { opacity: 1, x: 0, duration: 0.56, ease: "expo.out" }, 0.2)
+        tl.fromTo(".subhead", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.48, ease: "back.out(1.35)" }, 0.38)
+        tl.fromTo(".ledger", { opacity: 0, x: -42 }, { opacity: 1, x: 0, duration: 0.5, ease: "circ.out" }, 0.42)
+        tl.fromTo(".object-panel", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.56, ease: "power4.out" }, 0.5)
+        tl.fromTo(".footer-meta", { opacity: 0, scaleX: 0.8 }, { opacity: 1, scaleX: 1, duration: 0.42, ease: "power2.out" }, 0.62)
+        tl.fromTo(".event-row", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.34, stagger: 0.34, ease: "power3.out" }, 0.72)
+        tl.fromTo(".path-node", { opacity: 0, y: 18, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.32, stagger: 0.28, ease: "back.out(1.7)" }, 1.05)
+        tl.fromTo("#s2-risk", { backgroundColor: "transparent" }, { backgroundColor: "#285e3c", duration: 0.3, ease: "power2.out" }, 1.55)
+        tl.fromTo(".decision", { opacity: 0, y: 24, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.45)" }, 1.72)
+        tl.fromTo(".decision-meta", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.36, ease: "expo.out" }, 2.0)
+        tl.to(".status-dot", { opacity: 0.35, duration: 0.35, repeat: 5, yoyo: true, ease: "sine.inOut" }, 0.7)
+
+        window.__timelines["scene-events"] = tl
+      </script>
+    </template>
+  </body>
+</html>

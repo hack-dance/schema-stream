@@ -4,12 +4,18 @@ node_modules
 # Build and test output
 coverage
 dist
+.source
+site/.next
+site/.source
+site/content/docs
+site/public/generated
 
 # Local configuration
 .env
 .env.*
 !.env.example
 .mise.local.toml
+.vercel
 
 # Local credentials and signing material
 *.key

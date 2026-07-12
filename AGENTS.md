@@ -56,6 +56,10 @@ bun run check
 - Avoid narration-style inline comments. Use an inline comment only for a subtle invariant, protocol detail, compatibility workaround, or actionable TODO with context.
 - Update README or focused files under `docs/` when public behavior, configuration, performance tradeoffs, or compatibility changes.
 - Keep examples executable, type-correct, and representative of the published API.
+- Treat `README.md`, public guides under `docs/`, and `CHANGELOG.md` as canonical sources for both GitHub and schema.stream. `CONTRIBUTING.md`, `docs/benchmarks/`, and `archive/` remain repository-only. Never edit ignored `site/content/docs/`; `bun run docs:prepare` rebuilds it.
+- Run `bun run docs:generate` after changing public exports, exported TSDoc, or checked-in benchmark evidence. Commit the generated `docs/reference/api.md` and `docs/benchmarks/latest.md` updates.
+- Run `bun run docs:check` for generated drift and Markdown link coverage, and `bun run docs:build` for the complete production documentation build.
+- Keep browser examples credential-free. Live-provider examples must use user-owned server or Codespaces secrets and must never ask for an API key in the deployed docs UI.
 
 ## Testing expectations
 
@@ -83,5 +87,6 @@ Performance tests must be deterministic enough to detect major regressions witho
 - `src/`: library source and public entry points
 - `tests/`: unit, integration, benchmark, and packed-consumer verification
 - `docs/`: focused design and behavior documentation
+- `media/`: reproducible HyperFrames source for public product media
 - `.changeset/`: release notes and version intent
 - `.github/workflows/`: CI and release automation

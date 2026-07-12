@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <template id="scene-dashboard-template">
+      <style>
+        @font-face {
+          font-family: "Geist";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/Geist-Variable.woff2") format("woff2");
+        }
+
+        @font-face {
+          font-family: "Geist Mono";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/GeistMono-Variable.woff2") format("woff2");
+        }
+
+        #root {
+          background: #f3f3f1;
+          color: #111111;
+          font-family: "Geist", sans-serif;
+          height: 1080px;
+          overflow: hidden;
+          position: absolute;
+          width: 1920px;
+        }
+
+        * {
+          box-sizing: border-box;
+          letter-spacing: 0;
+        }
+
+        .shell {
+          background: #ffffff;
+          border: 2px solid #dddddd;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          height: calc(100% - 72px);
+          margin: 36px;
+          overflow: hidden;
+          position: relative;
+          width: calc(100% - 72px);
+        }
+
+        .toolbar {
+          align-items: center;
+          background: #f7f7f5;
+          border-bottom: 2px solid #dddddd;
+          display: flex;
+          height: 72px;
+          justify-content: space-between;
+          padding: 0 26px;
+        }
+
+        .brand,
+        .policy,
+        .run-status,
+        .section-label,
+        .metric span,
+        .section-head span,
+        .owner-card span,
+        .owner-card small,
+        .recommendation strong,
+        .panel-head,
+        .event-row,
+        pre {
+          font-family: "Geist Mono", monospace;
+        }
+
+        .brand {
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .policy-group {
+          background: #ffffff;
+          border: 2px solid #dddddd;
+          border-radius: 5px;
+          display: flex;
+          overflow: hidden;
+        }
+
+        .policy {
+          border-right: 2px solid #dddddd;
+          color: #646464;
+          font-size: 17px;
+          padding: 12px 18px;
+        }
+
+        .policy:last-child {
+          border-right: 0;
+        }
+
+        .policy.active {
+          background: #111111;
+          color: #ffffff;
+        }
+
+        .run-status {
+          align-items: center;
+          color: #08783e;
+          display: flex;
+          font-size: 18px;
+          gap: 12px;
+        }
+
+        .status-dot {
+          background: #1eae63;
+          border-radius: 50%;
+          height: 11px;
+          width: 11px;
+        }
+
+        .workspace {
+          display: grid;
+          flex: 1;
+          grid-template-columns: minmax(0, 1fr) 560px;
+          min-height: 0;
+        }
+
+        .dashboard {
+          display: flex;
+          flex-direction: column;
+          gap: 22px;
+          min-height: 0;
+          padding: 34px 38px;
+        }
+
+        .dashboard-head {
+          align-items: start;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .section-label {
+          color: #646464;
+          font-size: 16px;
+          margin: 0 0 9px;
+          text-transform: uppercase;
+        }
+
+        h1 {
+          font-size: 52px;
+          font-weight: 650;
+          line-height: 1;
+          margin: 0;
+        }
+
+        .decision {
+          align-items: center;
+          background: #eef9f2;
+          border: 2px solid #b8e1c7;
+          border-radius: 5px;
+          color: #08783e;
+          display: flex;
+          font-size: 19px;
+          font-weight: 650;
+          gap: 10px;
+          padding: 13px 15px;
+        }
+
+        .decision-mark {
+          align-items: center;
+          background: #08783e;
+          border-radius: 50%;
+          color: #ffffff;
+          display: inline-flex;
+          font-family: "Geist Mono", monospace;
+          font-size: 14px;
+          height: 25px;
+          justify-content: center;
+          width: 25px;
+        }
+
+        .summary {
+          color: #3d3d3d;
+          font-size: 23px;
+          line-height: 1.4;
+          margin: 0;
+          max-width: 980px;
+        }
+
+        .metrics {
+          border: 2px solid #dddddd;
+          border-radius: 6px;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          overflow: hidden;
+        }
+
+        .metric {
+          border-right: 2px solid #dddddd;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          min-height: 104px;
+          padding: 18px 22px;
+        }
+
+        .metric:last-child {
+          border-right: 0;
+        }
+
+        .metric span {
+          color: #646464;
+          font-size: 15px;
+          text-transform: uppercase;
+        }
+
+        .metric strong {
+          font-size: 38px;
+          font-variant-numeric: tabular-nums;
+          line-height: 1;
+        }
+
+        .metric.risk strong {
+          color: #9a5b00;
+          font-size: 30px;
+          text-transform: uppercase;
+        }
+
+        .dashboard-section {
+          border-top: 2px solid #dddddd;
+          padding-top: 16px;
+        }
+
+        .section-head {
+          align-items: center;
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        }
+
+        .section-head h2 {
+          font-size: 22px;
+          font-weight: 650;
+          margin: 0;
+        }
+
+        .section-head span {
+          color: #646464;
+          font-size: 15px;
+        }
+
+        .milestones {
+          display: grid;
+          gap: 9px;
+        }
+
+        .milestone {
+          align-items: center;
+          background: #f7f7f5;
+          border: 2px solid #ececea;
+          border-radius: 4px;
+          display: grid;
+          font-size: 18px;
+          gap: 14px;
+          grid-template-columns: 18px minmax(0, 1fr) auto;
+          min-height: 48px;
+          padding: 0 14px;
+        }
+
+        .milestone i {
+          border: 3px solid #08783e;
+          border-radius: 50%;
+          height: 14px;
+          width: 14px;
+        }
+
+        .milestone.pending i {
+          border-color: #9a5b00;
+        }
+
+        .milestone span {
+          color: #646464;
+          font-size: 16px;
+        }
+
+        .owners {
+          display: grid;
+          gap: 10px;
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .owner-card {
+          border: 2px solid #dddddd;
+          border-radius: 5px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          min-height: 88px;
+          padding: 13px 15px;
+        }
+
+        .owner-card span {
+          color: #646464;
+          font-size: 14px;
+          text-transform: uppercase;
+        }
+
+        .owner-card strong {
+          font-size: 18px;
+        }
+
+        .owner-card small {
+          color: #08783e;
+          font-size: 14px;
+        }
+
+        .recommendation {
+          align-items: center;
+          background: #101010;
+          border-radius: 6px;
+          color: #ffffff;
+          display: grid;
+          gap: 20px;
+          grid-template-columns: 90px minmax(0, 1fr);
+          min-height: 80px;
+          padding: 16px 20px;
+        }
+
+        .recommendation strong {
+          color: #65d695;
+          font-size: 21px;
+        }
+
+        .recommendation p {
+          color: #f4f4f4;
+          font-size: 18px;
+          line-height: 1.35;
+          margin: 0;
+        }
+
+        .inspector {
+          border-left: 2px solid #dddddd;
+          display: grid;
+          grid-template-rows: 1fr 1fr;
+          min-height: 0;
+        }
+
+        .panel {
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .panel:first-child {
+          border-bottom: 2px solid #dddddd;
+        }
+
+        .panel-head {
+          align-items: center;
+          background: #f7f7f5;
+          border-bottom: 2px solid #dddddd;
+          display: flex;
+          font-size: 17px;
+          height: 54px;
+          justify-content: space-between;
+          padding: 0 18px;
+          text-transform: uppercase;
+        }
+
+        .panel-head span:last-child {
+          color: #646464;
+        }
+
+        .event-log {
+          padding: 8px 16px;
+        }
+
+        .event-row {
+          align-items: center;
+          border-bottom: 2px solid #ececea;
+          display: grid;
+          font-size: 15px;
+          gap: 12px;
+          grid-template-columns: 28px minmax(0, 1fr) auto;
+          min-height: 48px;
+        }
+
+        .event-row span:first-child {
+          color: #646464;
+        }
+
+        .event-row code {
+          color: #0057d9;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .event-row span:last-child {
+          color: #08783e;
+        }
+
+        .json-panel {
+          background: #101010;
+          color: #f4f4f4;
+        }
+
+        .json-panel .panel-head {
+          background: #181818;
+          border-color: #303030;
+          color: #f4f4f4;
+        }
+
+        .json-panel .panel-head span:last-child {
+          color: #a8a8a8;
+        }
+
+        pre {
+          color: #f4f4f4;
+          font-size: 15px;
+          line-height: 1.42;
+          margin: 0;
+          overflow: hidden;
+          padding: 14px 20px;
+          white-space: pre-wrap;
+        }
+
+        .key {
+          color: #9fc1ff;
+        }
+
+        .string {
+          color: #b7e7be;
+        }
+
+        .number {
+          color: #d9e6ff;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-dashboard" data-width="1920" data-height="1080">
+        <div class="shell">
+          <header class="toolbar">
+            <div class="brand">schema-stream / playground</div>
+            <div class="policy-group">
+              <span class="policy active">Every chunk</span>
+              <span class="policy">Complete values</span>
+              <span class="policy">Every 96 bytes</span>
+              <span class="policy">Final only</span>
+            </div>
+            <div class="run-status"><span class="status-dot"></span><span>Complete</span><strong>486 snapshots</strong></div>
+          </header>
+
+          <div class="workspace">
+            <main class="dashboard">
+              <div class="dashboard-head">
+                <div>
+                  <p class="section-label">Materialized dashboard</p>
+                  <h1>Release readiness</h1>
+                </div>
+                <div class="decision"><span class="decision-mark">&#10003;</span>Continue release checks</div>
+              </div>
+
+              <p class="summary">The release is technically ready with one operational dependency still open.</p>
+
+              <section class="metrics">
+                <div class="metric"><span>Readiness</span><strong>82</strong></div>
+                <div class="metric"><span>Coverage</span><strong>94</strong></div>
+                <div class="metric risk"><span>Risk</span><strong>medium</strong></div>
+              </section>
+
+              <section class="dashboard-section">
+                <div class="section-head"><h2>Milestones</h2><span>2 complete</span></div>
+                <div class="milestones">
+                  <div class="milestone"><i></i><strong>API contract</strong><span>Platform</span></div>
+                  <div class="milestone"><i></i><strong>Rollback plan</strong><span>Reliability</span></div>
+                  <div class="milestone pending"><i></i><strong>Support handoff</strong><span>Operations</span></div>
+                </div>
+              </section>
+
+              <section class="dashboard-section">
+                <div class="section-head"><h2>Owners</h2><span>3 materialized</span></div>
+                <div class="owners">
+                  <div class="owner-card"><span>api</span><strong>Contract stability</strong><small>ready</small></div>
+                  <div class="owner-card"><span>operations</span><strong>Escalation coverage</strong><small>review</small></div>
+                  <div class="owner-card"><span>product</span><strong>Launch messaging</strong><small>ready</small></div>
+                </div>
+              </section>
+
+              <div class="recommendation">
+                <strong>SHIP</strong>
+                <p>Proceed after the support handoff owner confirms coverage.</p>
+              </div>
+            </main>
+
+            <aside class="inspector">
+              <section class="panel">
+                <div class="panel-head"><span>Completion events</span><span>18 total</span></div>
+                <div class="event-log">
+                  <div class="event-row"><span>14</span><code>$.metrics.risk</code><span>"medium"</span></div>
+                  <div class="event-row"><span>15</span><code>$.metrics</code><span>{...}</span></div>
+                  <div class="event-row"><span>16</span><code>$.milestones.2</code><span>{...}</span></div>
+                  <div class="event-row"><span>17</span><code>$.recommendation.decision</code><span>"ship"</span></div>
+                  <div class="event-row"><span>18</span><code>$</code><span>{...}</span></div>
+                </div>
+              </section>
+
+              <section class="panel json-panel">
+                <div class="panel-head"><span>Current JSON snapshot</span><span>revision 486</span></div>
+                <pre>{
+  <span class="key">"title"</span>: <span class="string">"Release readiness"</span>,
+  <span class="key">"metrics"</span>: {
+    <span class="key">"readiness"</span>: <span class="number">82</span>,
+    <span class="key">"coverage"</span>: <span class="number">94</span>,
+    <span class="key">"risk"</span>: <span class="string">"medium"</span>
+  },
+  <span class="key">"recommendation"</span>: {
+    <span class="key">"decision"</span>: <span class="string">"ship"</span>
+  }
+}</pre>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {}
+        const tl = gsap.timeline({ paused: true })
+
+        tl.fromTo(".shell", { borderColor: "#0057d9" }, { borderColor: "#dddddd", duration: 0.6, ease: "power4.out" }, 0.12)
+        tl.fromTo(".toolbar", { clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0% 0)", duration: 0.44, ease: "expo.out" }, 0.24)
+        tl.fromTo(".dashboard-head", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.5, ease: "circ.out" }, 0.38)
+        tl.fromTo(".summary", { clipPath: "inset(100% 0 0 0)" }, { clipPath: "inset(0% 0 0 0)", duration: 0.42, ease: "back.out(1.35)" }, 0.54)
+        tl.fromTo(".metric", { clipPath: "inset(100% 0 0 0)" }, { clipPath: "inset(0% 0 0 0)", duration: 0.38, stagger: 0.14, ease: "back.out(1.6)" }, 0.68)
+        tl.fromTo(".milestone", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.34, stagger: 0.13, ease: "power3.out" }, 1.12)
+        tl.fromTo(".owner-card", { clipPath: "inset(100% 0 0 0)" }, { clipPath: "inset(0% 0 0 0)", duration: 0.36, stagger: 0.14, ease: "expo.out" }, 1.52)
+        tl.fromTo(".recommendation", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.5, ease: "power4.out" }, 1.96)
+        tl.fromTo(".inspector", { clipPath: "inset(0 0 0 100%)" }, { clipPath: "inset(0 0 0 0%)", duration: 0.32, ease: "circ.out" }, 0.18)
+        tl.fromTo(".event-row", { clipPath: "inset(0 0 0 100%)" }, { clipPath: "inset(0 0 0 0%)", duration: 0.3, stagger: 0.13, ease: "power2.out" }, 1.0)
+        tl.fromTo("pre", { clipPath: "inset(100% 0 0 0)" }, { clipPath: "inset(0% 0 0 0)", duration: 0.46, ease: "expo.out" }, 1.58)
+        tl.fromTo(".decision", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.4, ease: "back.out(1.8)" }, 2.25)
+        tl.to(".status-dot", { opacity: 0.35, duration: 0.35, repeat: 4, yoyo: true, ease: "sine.inOut" }, 0.52)
+
+        window.__timelines["scene-dashboard"] = tl
+      </script>
+    </template>
+  </body>
+</html>

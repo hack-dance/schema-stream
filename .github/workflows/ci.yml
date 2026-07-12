@@ -18,6 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Bun
@@ -39,11 +40,20 @@ jobs:
       - name: Type-check
         run: bun run type-check
 
+      - name: Verify release plan
+        run: bun run release:check --since origin/main
+
       - name: Test with coverage
         run: bun run test:coverage
 
-      - name: Build
-        run: bun run build
+      - name: Verify documentation sources
+        run: bun run docs:check
+
+      - name: Verify product demo composition
+        run: bun run demo:check
+
+      - name: Build package and documentation site
+        run: bun run docs:build
 
       - name: Verify packed consumers
         run: bun run test:packed

@@ -19,8 +19,8 @@
     "warmups": 1
   },
   "method": {
-    "baseline": "parse plus UTF-8 decode plus JSON.parse for every emitted snapshot",
-    "candidate": "iterate with direct JSON-domain object snapshots",
+    "baseline": "parse() snapshot JSON.stringify and UTF-8 encode, followed by decode and JSON.parse for every emitted snapshot",
+    "candidate": "iterate() with direct independent JSON-domain object snapshots from the same parser and policy",
     "resultValidation": "full deep equality outside every timed window",
     "sampleOrdering": "roundtrip and iterate alternate order within paired samples",
     "speedup": "roundtrip median divided by iterate median"
