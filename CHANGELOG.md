@@ -1,5 +1,23 @@
 # schema-stream
 
+## 4.2.0
+
+### Minor Changes
+
+- [#21](https://github.com/hack-dance/schema-stream/pull/21) [`06e422c`](https://github.com/hack-dance/schema-stream/commit/06e422c493e331cd6c4372d2bfcf81f49178048b) Thanks [@roodboi](https://github.com/roodboi)! - Reduce progressive parsing overhead by batching internal partial-string updates at source-chunk
+  boundaries when completion callbacks are unused, using safe fast property writes, and materializing
+  `iterate()` snapshots directly without a UTF-8 JSON round trip. External and exotic defaults retain
+  the previous JSON normalization behavior. Add the low-overhead `onValueComplete` event for
+  child-before-parent completion deltas with their completed values while preserving the legacy
+  progress callback. Add a polished Bun and Node benchmark, complex completion coverage, runnable
+  examples, server-to-browser transport guidance, and deterministic plus opt-in live SDK integration
+  tests, including a guarded Mastra Agent compatibility example and weekly live canary.
+
+### Patch Changes
+
+- [#22](https://github.com/hack-dance/schema-stream/pull/22) [`6045b9f`](https://github.com/hack-dance/schema-stream/commit/6045b9f2a0e7901f421d1b4107e2aeae1b35e64e) Thanks [@roodboi](https://github.com/roodboi)! - Link the package to schema.stream and add the generated documentation site, executable integration
+  guides, synchronized canonical Markdown, browser playground, and a reproducible product demo video.
+
 ## 4.1.0
 
 ### Minor Changes
