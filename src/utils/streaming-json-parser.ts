@@ -1,3 +1,4 @@
+import { cloneJsonSnapshot } from "./json-clone"
 import JSONParser from "./json-parser"
 import type {
   ParsedElementInfo,
@@ -25,7 +26,7 @@ export type TypeDefaults = {
 /** Object keys and array indexes locating a value in the streamed document. */
 export type SchemaPath = (string | number | undefined)[]
 
-/** Completion state reported after a streamed value changes. */
+/** Legacy progress state reported after a streamed value changes. */
 export type OnKeyCompleteCallbackParams = {
   /** The value currently receiving streamed content, or an empty path after parsing finishes. */
   activePath: SchemaPath
@@ -33,8 +34,29 @@ export type OnKeyCompleteCallbackParams = {
   completedPaths: SchemaPath[]
 }
 
-/** Receives immutable path snapshots as streamed values progress and complete. */
+/** Receives independent path snapshots as streamed values progress and complete. */
 export type OnKeyCompleteCallback = (data: OnKeyCompleteCallbackParams) => void
+
+/** Object keys and array indexes locating a syntactically complete JSON value. */
+export type SchemaStreamValuePath = readonly (string | number)[]
+
+/** A single completed-value event without cumulative completion history. */
+export type OnValueCompleteCallbackParams = {
+  /**
+   * Path of the value that just completed. Children complete before their containers, and an empty
+   * path identifies the completed root document.
+   */
+  path: SchemaStreamValuePath
+  /**
+   * The syntactically complete JSON value at `path`. The parser does not clone container values for
+   * this callback; consumers should treat objects and arrays as read-only because mutations can be
+   * visible in later ancestor and root completion events.
+   */
+  value: unknown
+}
+
+/** Receives the path and value when each primitive or container finishes parsing. */
+export type OnValueCompleteCallback = (event: OnValueCompleteCallbackParams) => void
 
 /** Configures schema-derived placeholders and completion reporting. */
 export type SchemaStreamOptions<TSchema extends ZodObjectSchema> = {
@@ -44,6 +66,11 @@ export type SchemaStreamOptions<TSchema extends ZodObjectSchema> = {
   typeDefaults?: TypeDefaults
   /** Called as values progress and once more with an empty active path after completion. */
   onKeyComplete?: OnKeyCompleteCallback
+  /**
+   * Called once for each completed JSON value, including containers and the root document. Unlike
+   * `onKeyComplete`, this callback emits a path delta and does not copy cumulative history.
+   */
+  onValueComplete?: OnValueCompleteCallback
 }
 
 /** Configures JSON tokenization and snapshot cadence for `parse()` and `iterate()`. */
@@ -56,7 +83,7 @@ export type SchemaStreamParseOptions = {
   snapshotPolicy?: SnapshotPolicy
 }
 
-/** Controls when cumulative JSON snapshots are serialized and emitted. The default is `chunk`. */
+/** Controls when cumulative JSON snapshots are emitted. The default is `chunk`. */
 export type SnapshotPolicy =
   | {
       /** Emits after every input chunk. */
@@ -89,6 +116,11 @@ type OpenSource<TChunk extends SchemaStreamInputChunk> = {
   finish: (cancel: boolean) => Promise<void>
 }
 
+type ParserSession = {
+  finish: () => boolean
+  write: (chunk: Uint8Array) => boolean
+}
+
 type JsonContainer = Record<string | number, unknown>
 
 function hasOwn(value: object, key: PropertyKey): boolean {
@@ -99,7 +131,25 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+/**
+ * Writes schema-shaped values without invoking inherited setters or the legacy `__proto__`
+ * mutator. Compatible own properties retain the assignment fast path used by progressive updates.
+ */
 function setOwnValue(target: JsonContainer, key: string | number, value: unknown): void {
+  const descriptor = Object.getOwnPropertyDescriptor(target, key)
+  const hasCompatibleOwnDataProperty =
+    descriptor !== undefined &&
+    "value" in descriptor &&
+    descriptor.configurable === true &&
+    descriptor.enumerable === true &&
+    descriptor.writable === true
+  const canCreateWithAssignment = descriptor === undefined && !(key in target)
+
+  if (hasCompatibleOwnDataProperty || canCreateWithAssignment) {
+    target[key] = value
+    return
+  }
+
   Object.defineProperty(target, key, {
     configurable: true,
     enumerable: true,
@@ -229,6 +279,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
   private readonly completedPaths: SchemaPath[] = []
   private readonly completedPathKeys = new Set<string>()
   private readonly onKeyComplete?: OnKeyCompleteCallback
+  private readonly onValueComplete?: OnValueCompleteCallback
   private readonly typeDefaults?: TypeDefaults
 
   /**
@@ -244,6 +295,7 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
       options.defaultData as Record<string, unknown> | undefined
     )
     this.onKeyComplete = options.onKeyComplete
+    this.onValueComplete = options.onValueComplete
   }
 
   private getTypeDefault(type: keyof TypeDefaults): unknown {
@@ -330,7 +382,16 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
   }
 
   private getPathFromStack(stack: StackElement[], key: string | number | undefined): SchemaPath {
-    return [...stack.map(element => element.key), key].slice(1)
+    if (stack.length === 0) {
+      return []
+    }
+
+    const path: SchemaPath = new Array(stack.length)
+    for (let index = 1; index < stack.length; index += 1) {
+      path[index - 1] = stack[index].key
+    }
+    path[stack.length - 1] = key
+    return path
   }
 
   private emitCompletion(): void {
@@ -352,15 +413,21 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     }
   }
 
-  private handleEmptyContainer({ key, stack, value }: ParsedElementInfo): boolean {
+  private handleEmptyContainer({
+    parsedValue: { key, stack, value },
+    valuePath
+  }: {
+    parsedValue: ParsedElementInfo
+    valuePath?: SchemaPath
+  }): boolean {
     const emptyArray = Array.isArray(value) && value.length === 0
     const emptyObject = isObject(value) && Object.keys(value).length === 0
     if (!(emptyArray || emptyObject)) {
       return false
     }
 
-    const valuePath = this.getPathFromStack(stack, key)
-    const existingValue = getPathValue(this.schemaInstance, valuePath)
+    const resolvedPath = valuePath ?? this.getPathFromStack(stack, key)
+    const existingValue = getPathValue(this.schemaInstance, resolvedPath)
     const alreadyPresent = emptyArray
       ? Array.isArray(existingValue) && existingValue.length === 0
       : isObject(existingValue) && Object.keys(existingValue).length === 0
@@ -368,14 +435,45 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
       return false
     }
 
-    if (valuePath.length > 0) {
-      this.activePath = valuePath
-      this.recordCompletedPath(valuePath)
-      setPathValue(this.schemaInstance, valuePath, emptyArray ? [] : {})
-      this.emitCompletion()
+    if (resolvedPath.length > 0) {
+      if (this.onKeyComplete) {
+        this.activePath = resolvedPath
+        this.recordCompletedPath(resolvedPath)
+      }
+      setPathValue(this.schemaInstance, resolvedPath, emptyArray ? [] : {})
+      if (this.onKeyComplete) {
+        this.emitCompletion()
+      }
     }
 
     return true
+  }
+
+  /**
+   * Handles TokenParser's canonical completed-value boundary. Completion deltas are dispatched only
+   * here so partial string tokens cannot emit them and primitives cannot be reported twice.
+   *
+   * @param parsedValue - Completed primitive or container with its parser stack location.
+   * @returns Whether an empty container changed the schema-shaped parser state.
+   */
+  private handleCompletedValue(parsedValue: ParsedElementInfo): boolean {
+    const callback = this.onValueComplete
+    const valuePath = callback
+      ? this.getPathFromStack(parsedValue.stack, parsedValue.key)
+      : undefined
+    const changedParserState = this.handleEmptyContainer({ parsedValue, valuePath })
+
+    if (callback && valuePath && valuePath.length > 0) {
+      const path: (string | number)[] = []
+      for (const segment of valuePath) {
+        if (segment !== undefined) {
+          path.push(segment)
+        }
+      }
+      callback({ path, value: parsedValue.value })
+    }
+
+    return changedParserState
   }
 
   private handleToken({
@@ -391,15 +489,18 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     tokenizer: ParsedTokenInfo
   }): boolean {
     const valuePath = this.getPathFromStack(stack, key)
-    this.activePath = valuePath
-
-    if (!partial && valuePath.length > 0) {
-      this.recordCompletedPath(valuePath)
+    if (this.onKeyComplete) {
+      this.activePath = valuePath
+      if (!partial && valuePath.length > 0) {
+        this.recordCompletedPath(valuePath)
+      }
     }
 
     setPathValue(this.schemaInstance, valuePath, value)
 
-    this.emitCompletion()
+    if (this.onKeyComplete) {
+      this.emitCompletion()
+    }
     return !partial && valuePath.length > 0
   }
 
@@ -421,11 +522,15 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     ) as SchemaStreamChunk<TStubSchema>
   }
 
-  private createTransform(
-    options: SchemaStreamParseOptions,
-    onSnapshot?: (snapshot: Uint8Array) => void
-  ): TransformStream<Uint8Array, Uint8Array> {
-    const textEncoder = new TextEncoder()
+  /**
+   * Creates tokenizer state and emission accounting for one parse operation. Legacy progress events
+   * retain character-level string cadence, while completed-value events use TokenParser's single
+   * `onValue` boundary and therefore keep chunk-batched tokenization.
+   *
+   * @param options - Tokenizer behavior and snapshot cadence for this operation.
+   * @returns Stateful write and finish operations shared by `parse()` and `iterate()`.
+   */
+  private createParserSession(options: SchemaStreamParseOptions): ParserSession {
     const snapshotPolicy = options.snapshotPolicy ?? { mode: "chunk" }
     if (
       snapshotPolicy.mode === "bytes" &&
@@ -436,13 +541,16 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     }
     const parser = new JSONParser({
       stringBufferSize: options.stringBufferSize ?? 0,
-      handleUnescapedNewLines: options.handleUnescapedNewLines ?? true
+      handleUnescapedNewLines: options.handleUnescapedNewLines ?? true,
+      partialStringTokenMode: this.onKeyComplete ? "character" : "chunk"
     })
     let bytesSinceEmission = 0
     let completedValuesSinceEmission = 0
     let parserRevision = 0
     let emittedRevision = -1
     let hasParsedValue = false
+    let rootCompletionPending = false
+    let rootCompletionValue: unknown
 
     parser.onToken = parsedToken => {
       const completedValue = this.handleToken(parsedToken)
@@ -453,15 +561,16 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     }
     parser.onValue = parsedValue => {
       hasParsedValue = true
-      if (this.handleEmptyContainer(parsedValue)) {
+      if (this.onValueComplete && parsedValue.stack.length === 0) {
+        rootCompletionPending = true
+        rootCompletionValue = parsedValue.value
+      }
+      if (this.handleCompletedValue(parsedValue)) {
         parserRevision += 1
       }
     }
 
-    const emitSnapshot = (controller: TransformStreamDefaultController<Uint8Array>): void => {
-      const snapshot = textEncoder.encode(JSON.stringify(this.schemaInstance))
-      controller.enqueue(snapshot)
-      onSnapshot?.(snapshot)
+    const recordEmission = (): void => {
       bytesSinceEmission = 0
       completedValuesSinceEmission = 0
       emittedRevision = parserRevision
@@ -480,33 +589,44 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
       return false
     }
 
-    return new TransformStream<Uint8Array, Uint8Array>({
-      transform: (chunk, controller): void => {
-        try {
-          parser.write(chunk)
-          bytesSinceEmission += chunk.byteLength
-          if (shouldEmit()) {
-            emitSnapshot(controller)
-          }
-        } catch (error) {
-          controller.error(error)
-        }
-      },
-      flush: controller => {
+    return {
+      finish: (): boolean => {
         if (!parser.isEnded) {
           parser.end()
         }
-        if (
-          snapshotPolicy.mode !== "chunk" &&
-          hasParsedValue &&
-          emittedRevision !== parserRevision
-        ) {
-          emitSnapshot(controller)
+        const emitFinalSnapshot =
+          snapshotPolicy.mode !== "chunk" && hasParsedValue && emittedRevision !== parserRevision
+        if (emitFinalSnapshot) {
+          recordEmission()
+        }
+        if (rootCompletionPending) {
+          rootCompletionPending = false
+          this.onValueComplete?.({ path: [], value: rootCompletionValue })
+          rootCompletionValue = undefined
         }
         this.activePath = []
         this.emitCompletion()
+        return emitFinalSnapshot
+      },
+      write: (chunk): boolean => {
+        parser.write(chunk)
+        bytesSinceEmission += chunk.byteLength
+        if (!shouldEmit()) {
+          return false
+        }
+        recordEmission()
+        return true
       }
-    })
+    }
+  }
+
+  /**
+   * Materializes an independent object snapshot without serialized UTF-8. Parser-owned JSON data
+   * uses the direct clone; custom serializers and exotic values dynamically retain the native
+   * stringify/parse contract.
+   */
+  private createObjectSnapshot(): SchemaStreamChunk<TSchema> {
+    return cloneJsonSnapshot({ value: this.schemaInstance }) as SchemaStreamChunk<TSchema>
   }
 
   /**
@@ -518,11 +638,36 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
    * @throws {TypeError} When a byte snapshot threshold is not a positive finite integer.
    */
   public parse(options: SchemaStreamParseOptions = {}): TransformStream<Uint8Array, Uint8Array> {
-    return this.createTransform(options)
+    const session = this.createParserSession(options)
+    const textEncoder = new TextEncoder()
+    const createSnapshot = (): Uint8Array => {
+      const json = JSON.stringify(this.schemaInstance)
+      if (json === undefined) {
+        return new Uint8Array()
+      }
+      return textEncoder.encode(json)
+    }
+
+    return new TransformStream<Uint8Array, Uint8Array>({
+      flush: controller => {
+        if (session.finish()) {
+          controller.enqueue(createSnapshot())
+        }
+      },
+      transform: (chunk, controller): void => {
+        try {
+          if (session.write(chunk)) {
+            controller.enqueue(createSnapshot())
+          }
+        } catch (error) {
+          controller.error(error)
+        }
+      }
+    })
   }
 
   /**
-   * Consumes streamed JSON text or bytes and yields immutable schema-shaped snapshots.
+   * Consumes streamed JSON text or bytes and yields independent schema-shaped snapshots.
    * The completed value is still unvalidated; use the producing SDK's settled output or
    * validate the final snapshot with the schema.
    *
@@ -537,22 +682,10 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
     source: SchemaStreamSource<TChunk>,
     options: SchemaStreamParseOptions = {}
   ): AsyncGenerator<SchemaStreamChunk<TSchema>, void, void> {
-    const decoder = new TextDecoder()
-    const outputQueue: SchemaStreamChunk<TSchema>[] = []
-    const transform = this.createTransform(options, snapshot => {
-      outputQueue.push(JSON.parse(decoder.decode(snapshot)) as SchemaStreamChunk<TSchema>)
-    })
+    const session = this.createParserSession(options)
     const sourceHandle = openSource(source)
-    const reader = transform.readable.getReader()
-    const writer = transform.writable.getWriter()
     const encoder = new TextEncoder()
     let sourceDone = false
-    let parserDone = false
-    const outputPump = (async () => {
-      while (!(await reader.read()).done) {
-        // Reading relieves TransformStream backpressure; createTransform owns snapshot decoding.
-      }
-    })()
 
     try {
       while (true) {
@@ -564,29 +697,16 @@ export class SchemaStream<TSchema extends ZodObjectSchema> {
 
         const input: SchemaStreamInputChunk = next.value
         const bytes = typeof input === "string" ? encoder.encode(input) : input
-        await writer.write(bytes)
-        while (outputQueue.length > 0) {
-          yield outputQueue.shift() as SchemaStreamChunk<TSchema>
+        if (session.write(bytes)) {
+          yield this.createObjectSnapshot()
         }
       }
 
-      await writer.close()
-      await outputPump
-      while (outputQueue.length > 0) {
-        yield outputQueue.shift() as SchemaStreamChunk<TSchema>
+      if (session.finish()) {
+        yield this.createObjectSnapshot()
       }
-      parserDone = true
     } finally {
-      const cleanup: Promise<unknown>[] = [sourceHandle.finish(!sourceDone)]
-
-      if (!parserDone) {
-        cleanup.push(writer.abort(), reader.cancel())
-      }
-
-      cleanup.push(outputPump.catch(() => undefined))
-      await Promise.allSettled(cleanup)
-      writer.releaseLock()
-      reader.releaseLock()
+      await Promise.allSettled([sourceHandle.finish(!sourceDone)])
     }
   }
 }

@@ -127,6 +127,17 @@
           }
         }
       }
+    },
+    {
+      // Benchmark samples and runtime workers must run sequentially to avoid measurement contention.
+      "includes": ["tests/**/*.benchmark.mts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noAwaitInLoops": "off"
+          }
+        }
+      }
     }
   ]
 }

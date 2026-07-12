@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
 const workflowDirectory = join(import.meta.dir, "..", ".github", "workflows")
-const workflowNames = ["ci.yml", "publish.yml", "release-pr.yml"] as const
+const workflowNames = ["ci.yml", "live-e2e.yml", "publish.yml", "release-pr.yml"] as const
 const actionReferencePattern = /^\s*uses:\s*([^\s#]+)(?:\s+#.*)?$/gm
 const immutableActionReferencePattern = /^[^@\s]+@[0-9a-f]{40}$/
 const pullRequestTriggerPattern = /^\s*pull_request:\s*$/m
@@ -11,6 +11,7 @@ const persistedCredentialsPattern = /persist-credentials: false/g
 const publishEnvironmentPattern = /^\s+environment: PUBLISH$/m
 const publishPermissionsPattern = /^\s+permissions:\n\s+contents: read\n\s+id-token: write$/m
 const releasePermissionsPattern = /^permissions:\n\s+contents: write\n\s+pull-requests: write$/m
+const openAiSecretPattern = /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/
 
 function readWorkflow(name: (typeof workflowNames)[number]): Promise<string> {
   return Bun.file(join(workflowDirectory, name)).text()
@@ -37,6 +38,19 @@ describe("GitHub Actions security", () => {
     expect(workflow).toMatch(readOnlyPermissionsPattern)
     expect(workflow).not.toContain("secrets.")
     expect(workflow.match(persistedCredentialsPattern)).toHaveLength(2)
+  })
+
+  test("keeps live model credentials off pull requests", async () => {
+    const workflow = await readWorkflow("live-e2e.yml")
+
+    expect(workflow).toContain("workflow_dispatch:")
+    expect(workflow).toContain("schedule:")
+    expect(workflow).not.toMatch(pullRequestTriggerPattern)
+    expect(workflow).not.toContain("pull_request_target")
+    expect(workflow).toContain("if: github.repository == 'hack-dance/schema-stream'")
+    expect(workflow).toMatch(readOnlyPermissionsPattern)
+    expect(workflow).toContain("persist-credentials: false")
+    expect(workflow).toMatch(openAiSecretPattern)
   })
 
   test("limits trusted publishing to canonical release paths", async () => {

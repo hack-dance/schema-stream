@@ -13,19 +13,34 @@ export interface StringBuilder {
   appendChar: (char: number) => void
   appendString: (value: string) => void
   byteLength: number
+  flushPending: () => void
   reset: () => void
   toString: () => string
 }
 
+/**
+ * Accumulates an unbounded decoded string while optionally coalescing incremental updates.
+ * Deferred mode records every mutation but publishes at most once per tokenizer input chunk.
+ */
 export class NonBufferedString implements StringBuilder {
   private readonly decoder = new TextDecoder("utf-8")
   private readonly encoder = new TextEncoder()
   private string = ""
+  private updateRevision = 0
+  private flushedRevision = 0
+  private readonly deferIncrementalUpdates: boolean
   private readonly onIncrementalString?: (str: string) => void
 
   public byteLength = 0
 
-  constructor({ onIncrementalString }: { onIncrementalString?: (str: string) => void }) {
+  constructor({
+    deferIncrementalUpdates = false,
+    onIncrementalString
+  }: {
+    deferIncrementalUpdates?: boolean
+    onIncrementalString?: (str: string) => void
+  }) {
+    this.deferIncrementalUpdates = deferIncrementalUpdates
     this.onIncrementalString = onIncrementalString ?? undefined
   }
 
@@ -48,21 +63,39 @@ export class NonBufferedString implements StringBuilder {
   }
 
   private update(): void {
-    if (this.onIncrementalString) {
-      this.onIncrementalString(this.string)
+    if (!this.onIncrementalString) {
+      return
     }
+    if (this.deferIncrementalUpdates) {
+      this.updateRevision += 1
+      return
+    }
+    this.onIncrementalString(this.string)
+  }
+
+  /** Publishes a deferred incremental value once when the accumulated string has changed. */
+  public flushPending(): void {
+    if (this.flushedRevision === this.updateRevision || !this.onIncrementalString) {
+      return
+    }
+    this.flushedRevision = this.updateRevision
+    this.onIncrementalString(this.string)
   }
 
   public reset(): void {
     this.string = ""
+    this.updateRevision = 0
+    this.flushedRevision = 0
     this.byteLength = 0
   }
 
   public toString(): string {
+    this.flushedRevision = this.updateRevision
     return this.string
   }
 }
 
+/** Accumulates string bytes in fixed-size blocks before decoding and publishing them. */
 export class BufferedString implements StringBuilder {
   private readonly decoder = new TextDecoder("utf-8")
   private readonly encoder = new TextEncoder()
@@ -126,6 +159,11 @@ export class BufferedString implements StringBuilder {
     if (this.onIncrementalString) {
       this.onIncrementalString(this.string)
     }
+  }
+
+  /** Leaves buffered publication to the configured byte threshold and final string read. */
+  public flushPending(): void {
+    // Intentionally empty: BufferedString publishes through its byte-threshold flush.
   }
 
   public reset(): void {

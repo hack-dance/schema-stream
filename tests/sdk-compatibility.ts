@@ -1,3 +1,4 @@
+import { Agent as MastraAgent } from "@mastra/core/agent"
 import { Agent, run } from "@openai/agents"
 import { Output, streamText } from "ai"
 import * as z from "zod"
@@ -17,8 +18,9 @@ const schema = z.object({
 export async function openAiAgentsTypeCompatibility(): Promise<void> {
   const agent = new Agent({
     name: "SchemaStream type fixture",
-    model: "gpt-5.5",
-    instructions: "Return the requested structured data as JSON."
+    model: "gpt-5.6-luna",
+    instructions: "Return the requested structured data as JSON.",
+    outputType: schema
   })
   const result = await run(agent, "Summarize this input.", { stream: true })
   const parser = new SchemaStream(schema)
@@ -29,14 +31,14 @@ export async function openAiAgentsTypeCompatibility(): Promise<void> {
   }
 
   await result.completed
-  const finalOutput: string | undefined = result.finalOutput
+  const finalOutput: z.output<typeof schema> | undefined = result.finalOutput
   void finalOutput
 }
 
 /** Compile-only fixture. It is never called and does not contact a model. */
 export async function aiSdkTypeCompatibility(): Promise<void> {
   const result = streamText({
-    model: "openai/gpt-5.5",
+    model: "openai/gpt-5.6-luna",
     output: Output.object({ schema }),
     prompt: "Summarize this input."
   })
@@ -48,5 +50,27 @@ export async function aiSdkTypeCompatibility(): Promise<void> {
   }
 
   const finalOutput: z.output<typeof schema> = await result.output
+  void finalOutput
+}
+
+/** Compile-only fixture. It is never called and does not contact a model. */
+export async function mastraTypeCompatibility(): Promise<void> {
+  const agent = new MastraAgent({
+    id: "schema-stream-type-fixture",
+    name: "SchemaStream type fixture",
+    model: "openai/gpt-5.6-luna",
+    instructions: "Return the requested structured data as JSON."
+  })
+  const result = await agent.stream("Summarize this input.", {
+    structuredOutput: { schema }
+  })
+  const parser = new SchemaStream(schema)
+
+  for await (const partial of parser.iterate(result.textStream)) {
+    const typedPartial: SchemaStreamChunk<typeof schema> = partial
+    void typedPartial.details?.score
+  }
+
+  const finalOutput: z.output<typeof schema> = await result.object
   void finalOutput
 }

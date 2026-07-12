@@ -1,0 +1,165 @@
+{
+  "capturedAt": "2026-07-11T21:00:48Z",
+  "source": {
+    "baselineHead": "5f11bfbe944f9e9136e74c42c5c28083b9e19c24",
+    "performanceChanges": "the repository revision containing this artifact"
+  },
+  "host": {
+    "architecture": "arm64",
+    "chip": "Apple M5 Max",
+    "operatingSystem": "macOS 26.5.1"
+  },
+  "configuration": {
+    "chunkSizeBytes": 65536,
+    "fixtures": ["long-string", "object-heavy"],
+    "payloadSizeMiB": 2,
+    "policies": ["chunk", "value", "bytes-256kb", "bytes-1mb", "final"],
+    "repeats": 5,
+    "runtimes": ["Bun 1.3.14", "Node v24.18.0"],
+    "warmups": 1
+  },
+  "method": {
+    "baseline": "parse plus UTF-8 decode plus JSON.parse for every emitted snapshot",
+    "candidate": "iterate with direct JSON-domain object snapshots",
+    "resultValidation": "full deep equality outside every timed window",
+    "sampleOrdering": "roundtrip and iterate alternate order within paired samples",
+    "speedup": "roundtrip median divided by iterate median"
+  },
+  "representativeRows": [
+    {
+      "avoidedSerializedBytes": 34604651,
+      "fixture": "long-string",
+      "iterateMedianMs": 1.5294169999999951,
+      "iterateSamplesMs": [
+        3.8770000000000095, 3.46712500000001, 1.4772079999999903, 1.3517500000000098,
+        1.5294169999999951
+      ],
+      "policy": "chunk",
+      "roundtripMedianMs": 11.936125000000004,
+      "roundtripSamplesMs": [
+        12.956417000000016, 13.79008300000001, 9.498624999999976, 11.936125000000004,
+        8.594875000000002
+      ],
+      "runtime": "Bun 1.3.14",
+      "speedup": 7.804362708143065
+    },
+    {
+      "avoidedSerializedBytes": 2097152,
+      "fixture": "long-string",
+      "iterateMedianMs": 1.2875419999999735,
+      "iterateSamplesMs": [
+        1.179666999999995, 1.287540999999976, 1.5760830000000396, 1.2875419999999735,
+        1.324707999999987
+      ],
+      "policy": "final",
+      "roundtripMedianMs": 1.9538749999999823,
+      "roundtripSamplesMs": [
+        1.6307089999999675, 2.6792919999999754, 1.622000000000014, 2.4417499999999563,
+        1.9538749999999823
+      ],
+      "runtime": "Bun 1.3.14",
+      "speedup": 1.517523311860912
+    },
+    {
+      "avoidedSerializedBytes": 36700118,
+      "fixture": "object-heavy",
+      "iterateMedianMs": 298.24375000000055,
+      "iterateSamplesMs": [
+        347.8932499999996, 356.20191699999987, 298.24375000000055, 252.8752089999998,
+        276.20945800000027
+      ],
+      "policy": "chunk",
+      "roundtripMedianMs": 310.35549999999967,
+      "roundtripSamplesMs": [
+        312.7470840000001, 354.9025419999998, 310.35549999999967, 307.2190840000003,
+        274.57037500000024
+      ],
+      "runtime": "Bun 1.3.14",
+      "speedup": 1.0406102391081091
+    },
+    {
+      "avoidedSerializedBytes": 2097188,
+      "fixture": "object-heavy",
+      "iterateMedianMs": 87.88358300000073,
+      "iterateSamplesMs": [
+        89.20529100000022, 93.46500000000015, 82.79874999999993, 86.65999999999985,
+        87.88358300000073
+      ],
+      "policy": "final",
+      "roundtripMedianMs": 93.32595899999978,
+      "roundtripSamplesMs": [
+        86.02829100000054, 102.47641699999986, 88.34962499999892, 93.32595899999978, 95.038958000001
+      ],
+      "runtime": "Bun 1.3.14",
+      "speedup": 1.0619271064539895
+    },
+    {
+      "avoidedSerializedBytes": 34604651,
+      "fixture": "long-string",
+      "iterateMedianMs": 2.7317920000000413,
+      "iterateSamplesMs": [
+        2.887666999999965, 2.7317920000000413, 3.1579589999998916, 2.656041999999843,
+        2.674541999999974
+      ],
+      "policy": "chunk",
+      "roundtripMedianMs": 100.59987500000011,
+      "roundtripSamplesMs": [
+        102.08208400000012, 97.55825000000004, 103.35524999999984, 100.59987500000011,
+        95.95591599999989
+      ],
+      "runtime": "Node v24.18.0",
+      "speedup": 36.82559836180741
+    },
+    {
+      "avoidedSerializedBytes": 2097152,
+      "fixture": "long-string",
+      "iterateMedianMs": 2.6264170000004015,
+      "iterateSamplesMs": [
+        2.6264170000004015, 2.8311250000001564, 2.6974169999998594, 2.2538329999997586,
+        2.614082999999937
+      ],
+      "policy": "final",
+      "roundtripMedianMs": 7.6352499999998145,
+      "roundtripSamplesMs": [
+        7.418250000000171, 7.594625000000178, 8.957500000000437, 7.6352499999998145,
+        7.674040999999761
+      ],
+      "runtime": "Node v24.18.0",
+      "speedup": 2.90709738780957
+    },
+    {
+      "avoidedSerializedBytes": 36700118,
+      "fixture": "object-heavy",
+      "iterateMedianMs": 245.8846249999997,
+      "iterateSamplesMs": [
+        214.40049999999974, 226.01066600000013, 251.54075000000012, 245.8846249999997,
+        247.1360420000001
+      ],
+      "policy": "chunk",
+      "roundtripMedianMs": 339.34820799999943,
+      "roundtripSamplesMs": [
+        302.86620800000037, 325.14129200000025, 339.34820799999943, 347.52099999999973,
+        357.08137499999975
+      ],
+      "runtime": "Node v24.18.0",
+      "speedup": 1.380111538084172
+    },
+    {
+      "avoidedSerializedBytes": 2097188,
+      "fixture": "object-heavy",
+      "iterateMedianMs": 52.178500000001804,
+      "iterateSamplesMs": [
+        52.178500000001804, 53.85070800000176, 50.96966600000087, 48.434958999998344,
+        54.09670900000128
+      ],
+      "policy": "final",
+      "roundtripMedianMs": 55.63016599999901,
+      "roundtripSamplesMs": [
+        55.63016599999901, 57.23287500000151, 55.018583000000945, 53.80395899999712,
+        60.50733300000138
+      ],
+      "runtime": "Node v24.18.0",
+      "speedup": 1.0661511158810062
+    }
+  ]
+}
