@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <template id="scene-policies-template">
+      <style>
+        @font-face {
+          font-family: "Geist";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/Geist-Variable.woff2") format("woff2");
+        }
+
+        @font-face {
+          font-family: "Geist Mono";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/GeistMono-Variable.woff2") format("woff2");
+        }
+
+        #root {
+          background: #f7f7f5;
+          color: #111111;
+          font-family: "Geist", sans-serif;
+          height: 1080px;
+          overflow: hidden;
+          position: absolute;
+          width: 1920px;
+        }
+
+        * {
+          box-sizing: border-box;
+          letter-spacing: 0;
+        }
+
+        .scene-content {
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+          height: 100%;
+          padding: 76px 92px 82px;
+          position: relative;
+          width: 100%;
+        }
+
+        .rule {
+          background: #dddddd;
+          position: absolute;
+        }
+
+        .rule.left,
+        .rule.right {
+          height: 1080px;
+          top: 0;
+          width: 2px;
+        }
+
+        .rule.left {
+          left: 92px;
+        }
+
+        .rule.right {
+          right: 92px;
+        }
+
+        .rule.top {
+          height: 2px;
+          left: 0;
+          top: 72px;
+          width: 1920px;
+        }
+
+        .topline,
+        .footer-meta {
+          align-items: center;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .brand,
+        .scene-label,
+        .payload,
+        .policy-name,
+        .policy-mode,
+        .policy-count,
+        .axis,
+        .footer-meta {
+          font-family: "Geist Mono", monospace;
+        }
+
+        .brand {
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .scene-label {
+          color: #646464;
+          font-size: 20px;
+          text-transform: uppercase;
+        }
+
+        .scene-label strong {
+          color: #0057d9;
+          margin-right: 18px;
+        }
+
+        .headline-row {
+          align-items: end;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        h1 {
+          font-size: 68px;
+          font-weight: 650;
+          line-height: 1;
+          margin: 0;
+        }
+
+        .subhead {
+          color: #3d3d3d;
+          font-size: 27px;
+          line-height: 1.35;
+          margin: 0;
+          max-width: 570px;
+        }
+
+        .payload {
+          align-items: center;
+          background: #ffffff;
+          border: 3px solid #111111;
+          border-radius: 6px;
+          color: #111111;
+          display: flex;
+          font-size: 20px;
+          gap: 20px;
+          min-height: 64px;
+          padding: 0 24px;
+        }
+
+        .payload-label {
+          color: #646464;
+          text-transform: uppercase;
+        }
+
+        .payload code {
+          color: #08783e;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .policy-board {
+          background: #ffffff;
+          border: 2px solid #dddddd;
+          border-radius: 7px;
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          min-height: 0;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .policy-header {
+          align-items: center;
+          background: #f7f7f5;
+          border-bottom: 2px solid #dddddd;
+          color: #646464;
+          display: grid;
+          font-family: "Geist Mono", monospace;
+          font-size: 17px;
+          grid-template-columns: 290px minmax(0, 1fr) 180px;
+          height: 54px;
+          padding: 0 24px;
+          text-transform: uppercase;
+        }
+
+        .policy-row {
+          align-items: center;
+          border-bottom: 2px solid #ececea;
+          display: grid;
+          flex: 1;
+          gap: 26px;
+          grid-template-columns: 264px minmax(0, 1fr) 154px;
+          min-height: 116px;
+          padding: 18px 24px;
+        }
+
+        .policy-row:last-child {
+          border-bottom: 0;
+        }
+
+        .policy-row.active {
+          background: #eef3ff;
+        }
+
+        .policy-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .policy-name {
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .policy-mode {
+          color: #646464;
+          font-size: 17px;
+        }
+
+        .track {
+          background: #e9e9e6;
+          height: 7px;
+          position: relative;
+        }
+
+        .track-fill {
+          background: #0057d9;
+          height: 7px;
+          left: 0;
+          position: absolute;
+          top: 0;
+          width: 100%;
+          transform-origin: left center;
+        }
+
+        .pulse {
+          background: #ffffff;
+          border: 3px solid #0057d9;
+          border-radius: 50%;
+          height: 18px;
+          position: absolute;
+          top: -6px;
+          transform: translateX(-50%);
+          width: 18px;
+        }
+
+        .policy-row.value .track-fill,
+        .policy-row.value .pulse {
+          background: #eef9f2;
+          border-color: #08783e;
+        }
+
+        .policy-row.value .track-fill {
+          background: #08783e;
+        }
+
+        .policy-row.bytes .track-fill,
+        .policy-row.bytes .pulse {
+          background: #fff5e3;
+          border-color: #9a5b00;
+        }
+
+        .policy-row.bytes .track-fill {
+          background: #9a5b00;
+        }
+
+        .policy-row.final .track-fill,
+        .policy-row.final .pulse {
+          background: #111111;
+          border-color: #111111;
+        }
+
+        .policy-count {
+          font-size: 20px;
+          font-variant-numeric: tabular-nums;
+          text-align: right;
+        }
+
+        .policy-count strong {
+          display: block;
+          font-size: 36px;
+          line-height: 1;
+          margin-bottom: 6px;
+        }
+
+        .policy-count span {
+          color: #646464;
+          font-size: 16px;
+          text-transform: uppercase;
+        }
+
+        .playhead {
+          background: #0057d9;
+          bottom: 18px;
+          left: 315px;
+          position: absolute;
+          top: 54px;
+          width: 3px;
+          z-index: 3;
+        }
+
+        .playhead::before {
+          background: #0057d9;
+          border-radius: 50%;
+          content: "";
+          height: 14px;
+          left: -5px;
+          position: absolute;
+          top: -1px;
+          width: 14px;
+        }
+
+        .axis {
+          color: #646464;
+          display: flex;
+          font-size: 16px;
+          justify-content: space-between;
+          margin-left: 290px;
+          margin-right: 180px;
+        }
+
+        .footer-meta {
+          border-top: 2px solid #dddddd;
+          color: #646464;
+          font-size: 17px;
+          padding-top: 18px;
+        }
+
+        .footer-meta strong {
+          color: #111111;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-policies" data-width="1920" data-height="1080">
+        <span class="rule left"></span>
+        <span class="rule right"></span>
+        <span class="rule top"></span>
+
+        <div class="scene-content">
+          <div class="topline">
+            <div class="brand">schema-stream</div>
+            <div class="scene-label"><strong>03</strong> choose the cadence</div>
+          </div>
+
+          <div class="headline-row">
+            <h1>One stream. Four update policies.</h1>
+            <p class="subhead">Control materialization frequency without changing parser semantics.</p>
+          </div>
+
+          <div class="payload">
+            <span class="payload-label">same payload</span>
+            <code>{"title":"Release readiness","metrics":{"readiness":82,"coverage":94,"risk":"medium"},...}</code>
+          </div>
+
+          <section class="policy-board">
+            <div class="policy-header"><span>Policy</span><span>Emission timeline</span><span>Output</span></div>
+            <div class="playhead" id="s3-playhead"></div>
+
+            <div class="policy-row active chunk">
+              <div class="policy-copy">
+                <span class="policy-name">Every chunk</span>
+                <code class="policy-mode">mode: "chunk"</code>
+              </div>
+              <div class="track">
+                <span class="track-fill"></span>
+                <i class="pulse" style="left: 4%"></i><i class="pulse" style="left: 9%"></i>
+                <i class="pulse" style="left: 14%"></i><i class="pulse" style="left: 19%"></i>
+                <i class="pulse" style="left: 24%"></i><i class="pulse" style="left: 30%"></i>
+                <i class="pulse" style="left: 36%"></i><i class="pulse" style="left: 42%"></i>
+                <i class="pulse" style="left: 49%"></i><i class="pulse" style="left: 56%"></i>
+                <i class="pulse" style="left: 63%"></i><i class="pulse" style="left: 70%"></i>
+                <i class="pulse" style="left: 77%"></i><i class="pulse" style="left: 84%"></i>
+                <i class="pulse" style="left: 91%"></i><i class="pulse" style="left: 98%"></i>
+              </div>
+              <div class="policy-count"><strong>94</strong><span>snapshots</span></div>
+            </div>
+
+            <div class="policy-row value">
+              <div class="policy-copy">
+                <span class="policy-name">Complete values</span>
+                <code class="policy-mode">mode: "value"</code>
+              </div>
+              <div class="track">
+                <span class="track-fill"></span>
+                <i class="pulse" style="left: 14%"></i><i class="pulse" style="left: 31%"></i>
+                <i class="pulse" style="left: 49%"></i><i class="pulse" style="left: 68%"></i>
+                <i class="pulse" style="left: 82%"></i><i class="pulse" style="left: 98%"></i>
+              </div>
+              <div class="policy-count"><strong>18</strong><span>boundaries</span></div>
+            </div>
+
+            <div class="policy-row bytes">
+              <div class="policy-copy">
+                <span class="policy-name">Byte threshold</span>
+                <code class="policy-mode">mode: "bytes", 96</code>
+              </div>
+              <div class="track">
+                <span class="track-fill"></span>
+                <i class="pulse" style="left: 18%"></i><i class="pulse" style="left: 36%"></i>
+                <i class="pulse" style="left: 54%"></i><i class="pulse" style="left: 72%"></i>
+                <i class="pulse" style="left: 90%"></i><i class="pulse" style="left: 98%"></i>
+              </div>
+              <div class="policy-count"><strong>6</strong><span>thresholds</span></div>
+            </div>
+
+            <div class="policy-row final">
+              <div class="policy-copy">
+                <span class="policy-name">Final only</span>
+                <code class="policy-mode">mode: "final"</code>
+              </div>
+              <div class="track">
+                <span class="track-fill"></span>
+                <i class="pulse" style="left: 98%"></i>
+              </div>
+              <div class="policy-count"><strong>1</strong><span>snapshot</span></div>
+            </div>
+          </section>
+
+          <div class="axis"><span>stream start</span><span>response complete</span></div>
+          <div class="footer-meta">
+            <span>parser work stays incremental</span>
+            <strong>materialize only when the application needs an object</strong>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {}
+        const tl = gsap.timeline({ paused: true })
+
+        tl.fromTo(".topline", { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.12)
+        tl.fromTo("h1", { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 0.56, ease: "expo.out" }, 0.2)
+        tl.fromTo(".subhead", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.48, ease: "back.out(1.35)" }, 0.36)
+        tl.fromTo(".payload", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.5, ease: "power4.out" }, 0.42)
+        tl.fromTo(".policy-board", { opacity: 0, scale: 0.975 }, { opacity: 1, scale: 1, duration: 0.5, ease: "circ.out" }, 0.5)
+        tl.fromTo(".policy-row", { opacity: 0, x: -34 }, { opacity: 1, x: 0, duration: 0.36, stagger: 0.18, ease: "power3.out" }, 0.72)
+        tl.fromTo(".axis", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.34, ease: "back.out(1.5)" }, 1.1)
+        tl.fromTo(".footer-meta", { opacity: 0, scaleX: 0.8 }, { opacity: 1, scaleX: 1, duration: 0.4, ease: "power2.out" }, 1.18)
+
+        tl.fromTo(".track-fill", { scaleX: 0 }, { scaleX: 1, duration: 2.25, stagger: 0.05, ease: "none" }, 1.05)
+        tl.fromTo(".pulse", { opacity: 0, scale: 0.25 }, { opacity: 1, scale: 1, duration: 0.18, stagger: 0.055, ease: "back.out(2.2)" }, 1.18)
+        tl.fromTo("#s3-playhead", { x: 0, opacity: 0 }, { x: 1210, opacity: 1, duration: 2.32, ease: "none" }, 1.0)
+
+        window.__timelines["scene-policies"] = tl
+      </script>
+    </template>
+  </body>
+</html>

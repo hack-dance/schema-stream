@@ -708,11 +708,12 @@ a {
   justify-self: end;
 }
 
-.demo-image {
+.demo-video {
+  aspect-ratio: 16 / 9;
+  background: var(--soft);
   border: 1px solid var(--rule);
   border-radius: 6px;
   display: block;
-  height: auto;
   margin: 0 auto;
   max-width: 1240px;
   object-fit: contain;

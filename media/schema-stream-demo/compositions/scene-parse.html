@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <template id="scene-parse-template">
+      <style>
+        @font-face {
+          font-family: "Geist";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/Geist-Variable.woff2") format("woff2");
+        }
+
+        @font-face {
+          font-family: "Geist Mono";
+          font-style: normal;
+          font-weight: 100 900;
+          src: url("assets/GeistMono-Variable.woff2") format("woff2");
+        }
+
+        #root {
+          background: #f7f7f5;
+          color: #111111;
+          font-family: "Geist", sans-serif;
+          height: 1080px;
+          overflow: hidden;
+          position: absolute;
+          width: 1920px;
+        }
+
+        * {
+          box-sizing: border-box;
+          letter-spacing: 0;
+        }
+
+        .grid-line {
+          background: #e4e4e1;
+          position: absolute;
+        }
+
+        .grid-line.vertical {
+          height: 1080px;
+          top: 0;
+          width: 2px;
+        }
+
+        .grid-line.horizontal {
+          height: 2px;
+          left: 0;
+          width: 1920px;
+        }
+
+        .scene-content {
+          display: flex;
+          flex-direction: column;
+          gap: 34px;
+          height: 100%;
+          padding: 76px 92px 82px;
+          position: relative;
+          width: 100%;
+        }
+
+        .topline {
+          align-items: center;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .brand {
+          font-family: "Geist Mono", monospace;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .scene-label {
+          align-items: center;
+          color: #646464;
+          display: flex;
+          font-family: "Geist Mono", monospace;
+          font-size: 20px;
+          gap: 18px;
+          text-transform: uppercase;
+        }
+
+        .scene-label strong {
+          color: #0057d9;
+          font-weight: 700;
+        }
+
+        .headline-row {
+          align-items: end;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        h1 {
+          font-size: 72px;
+          font-weight: 650;
+          line-height: 1;
+          margin: 0;
+        }
+
+        .promise {
+          color: #3d3d3d;
+          font-size: 28px;
+          line-height: 1.35;
+          margin: 0 0 4px;
+          max-width: 560px;
+        }
+
+        .workspace {
+          display: grid;
+          flex: 1;
+          gap: 28px;
+          grid-template-columns: minmax(0, 1fr) 430px;
+          min-height: 0;
+        }
+
+        .code-shell {
+          background: #101010;
+          border: 3px solid #111111;
+          border-radius: 8px;
+          color: #f4f4f4;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .code-bar {
+          align-items: center;
+          border-bottom: 2px solid #303030;
+          color: #a8a8a8;
+          display: flex;
+          font-family: "Geist Mono", monospace;
+          font-size: 18px;
+          height: 62px;
+          justify-content: space-between;
+          padding: 0 24px;
+          text-transform: uppercase;
+        }
+
+        .live {
+          align-items: center;
+          color: #b7e7be;
+          display: flex;
+          gap: 12px;
+        }
+
+        .live-dot {
+          background: #1eae63;
+          border-radius: 50%;
+          height: 12px;
+          width: 12px;
+        }
+
+        .code-body {
+          flex: 1;
+          font-family: "Geist Mono", monospace;
+          font-size: 23px;
+          line-height: 1.48;
+          overflow: hidden;
+          padding: 28px 38px;
+          position: relative;
+        }
+
+        .code-line {
+          display: block;
+          white-space: pre;
+        }
+
+        .key {
+          color: #9fc1ff;
+        }
+
+        .string {
+          color: #b7e7be;
+          display: inline-block;
+        }
+
+        .number {
+          color: #d9e6ff;
+        }
+
+        .scan-line {
+          background: #0057d9;
+          height: 3px;
+          left: 0;
+          position: absolute;
+          top: 104px;
+          width: 100%;
+        }
+
+        .caret {
+          background: #78aaff;
+          display: inline-block;
+          height: 28px;
+          margin-left: 3px;
+          transform: translateY(5px);
+          width: 3px;
+        }
+
+        .rail {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          min-height: 0;
+        }
+
+        .rail-panel {
+          background: #ffffff;
+          border: 2px solid #dddddd;
+          border-radius: 6px;
+          padding: 24px;
+        }
+
+        .rail-title {
+          color: #646464;
+          font-family: "Geist Mono", monospace;
+          font-size: 17px;
+          text-transform: uppercase;
+        }
+
+        .chunk-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 20px;
+        }
+
+        .chunk {
+          background: #eef3ff;
+          border: 2px solid #b6cef6;
+          border-radius: 4px;
+          color: #0057d9;
+          font-family: "Geist Mono", monospace;
+          font-size: 18px;
+          padding: 9px 11px;
+        }
+
+        .metrics {
+          display: grid;
+          flex: 1;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .metric {
+          border-bottom: 2px solid #dddddd;
+          border-right: 2px solid #dddddd;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 132px;
+          padding: 22px;
+        }
+
+        .metric:nth-child(2n) {
+          border-right: 0;
+        }
+
+        .metric:nth-last-child(-n + 2) {
+          border-bottom: 0;
+        }
+
+        .metric span {
+          color: #646464;
+          font-family: "Geist Mono", monospace;
+          font-size: 16px;
+          text-transform: uppercase;
+        }
+
+        .metric strong {
+          font-family: "Geist Mono", monospace;
+          font-size: 38px;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .metric strong.blue {
+          color: #0057d9;
+        }
+
+        .footer-rule {
+          align-items: center;
+          border-top: 2px solid #dddddd;
+          color: #646464;
+          display: flex;
+          font-family: "Geist Mono", monospace;
+          font-size: 17px;
+          justify-content: space-between;
+          padding-top: 18px;
+        }
+
+        .footer-rule strong {
+          color: #111111;
+        }
+      </style>
+
+      <div id="root" data-composition-id="scene-parse" data-width="1920" data-height="1080">
+        <span class="grid-line vertical" style="left: 92px"></span>
+        <span class="grid-line vertical" style="left: 1384px"></span>
+        <span class="grid-line vertical" style="left: 1828px"></span>
+        <span class="grid-line horizontal" style="top: 72px"></span>
+        <span class="grid-line horizontal" style="top: 998px"></span>
+
+        <div class="scene-content">
+          <div class="topline">
+            <div class="brand">schema-stream</div>
+            <div class="scene-label"><strong>01</strong> parse every chunk</div>
+          </div>
+
+          <div class="headline-row">
+            <h1>JSON becomes usable as it arrives.</h1>
+            <p class="promise">The full typed shape is present while values keep materializing.</p>
+          </div>
+
+          <div class="workspace">
+            <section class="code-shell">
+              <div class="code-bar">
+                <span class="live"><span class="live-dot"></span> streaming</span>
+                <span>snapshot <strong id="s1-count">0</strong></span>
+              </div>
+              <div class="code-body">
+                <span class="code-line">{</span>
+                <span class="code-line">  <span class="key">"title"</span>: "<span class="string" id="s1-title">Release readiness</span>",</span>
+                <span class="code-line">  <span class="key">"summary"</span>: "<span class="string" id="s1-summary">One operational dependency remains.</span>",</span>
+                <span class="code-line">  <span class="key">"metrics"</span>: {</span>
+                <span class="code-line">    <span class="key">"readiness"</span>: <span class="number" id="s1-readiness">82</span>,</span>
+                <span class="code-line">    <span class="key">"coverage"</span>: <span class="number" id="s1-coverage">94</span>,</span>
+                <span class="code-line">    <span class="key">"risk"</span>: "<span class="string" id="s1-risk">medium</span>"</span>
+                <span class="code-line">  },</span>
+                <span class="code-line">  <span class="key">"milestones"</span>: [{ <span class="key">"label"</span>: "<span class="string" id="s1-milestone">API contract</span>" }]</span>
+                <span class="code-line">}<span class="caret" id="s1-caret"></span></span>
+                <span class="scan-line" id="s1-scan"></span>
+              </div>
+            </section>
+
+            <aside class="rail">
+              <section class="rail-panel">
+                <div class="rail-title">Incoming provider chunks</div>
+                <div class="chunk-list">
+                  <span class="chunk">{"ti</span>
+                  <span class="chunk">tle"</span>
+                  <span class="chunk">:"Re</span>
+                  <span class="chunk">lease</span>
+                  <span class="chunk"> rea</span>
+                  <span class="chunk">diness"</span>
+                </div>
+              </section>
+
+              <section class="rail-panel metrics">
+                <div class="metric">
+                  <span>bytes consumed</span>
+                  <strong class="blue" id="s1-bytes">0</strong>
+                </div>
+                <div class="metric">
+                  <span>source chunks</span>
+                  <strong id="s1-chunks">0</strong>
+                </div>
+                <div class="metric">
+                  <span>schema fields</span>
+                  <strong>9</strong>
+                </div>
+                <div class="metric">
+                  <span>reparsed prefix</span>
+                  <strong>0</strong>
+                </div>
+              </section>
+            </aside>
+          </div>
+
+          <div class="footer-rule">
+            <span>provider chunk -> tokenizer -> parser state</span>
+            <strong>snapshotPolicy: chunk</strong>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {}
+        const tl = gsap.timeline({ paused: true })
+
+        tl.fromTo(".topline", { opacity: 0, y: -24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.12)
+        tl.fromTo("h1", { opacity: 0, x: -54 }, { opacity: 1, x: 0, duration: 0.62, ease: "expo.out" }, 0.2)
+        tl.fromTo(".promise", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.48, ease: "back.out(1.4)" }, 0.38)
+        tl.fromTo(".code-shell", { opacity: 0, scale: 0.965 }, { opacity: 1, scale: 1, duration: 0.55, ease: "power4.out" }, 0.34)
+        tl.fromTo(".rail", { opacity: 0, x: 52 }, { opacity: 1, x: 0, duration: 0.55, ease: "circ.out" }, 0.48)
+        tl.fromTo(".footer-rule", { opacity: 0, scaleX: 0.8 }, { opacity: 1, scaleX: 1, duration: 0.45, ease: "power2.out" }, 0.64)
+        tl.fromTo(".chunk", { opacity: 0, y: 14, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.24, stagger: 0.12, ease: "back.out(1.8)" }, 0.72)
+
+        tl.set("#s1-title, #s1-summary, #s1-readiness, #s1-coverage, #s1-risk, #s1-milestone", { clipPath: "inset(0 100% 0 0)" }, 0)
+        tl.to("#s1-title", { clipPath: "inset(0 0% 0 0)", duration: 0.65, ease: "steps(17)" }, 0.8)
+        tl.to("#s1-summary", { clipPath: "inset(0 0% 0 0)", duration: 0.85, ease: "steps(35)" }, 1.35)
+        tl.to("#s1-readiness", { clipPath: "inset(0 0% 0 0)", duration: 0.18, ease: "steps(2)" }, 2.0)
+        tl.to("#s1-coverage", { clipPath: "inset(0 0% 0 0)", duration: 0.18, ease: "steps(2)" }, 2.22)
+        tl.to("#s1-risk", { clipPath: "inset(0 0% 0 0)", duration: 0.34, ease: "steps(6)" }, 2.42)
+        tl.to("#s1-milestone", { clipPath: "inset(0 0% 0 0)", duration: 0.54, ease: "steps(12)" }, 2.78)
+        tl.to("#s1-scan", { y: 500, duration: 2.65, ease: "none" }, 0.75)
+        tl.to("#s1-caret", { opacity: 0.15, duration: 0.25, repeat: 9, yoyo: true, ease: "steps(1)" }, 0.7)
+        tl.to("#s1-count", { textContent: 94, snap: { textContent: 1 }, duration: 2.7, ease: "none" }, 0.72)
+        tl.to("#s1-bytes", { textContent: 486, snap: { textContent: 1 }, duration: 2.7, ease: "none" }, 0.72)
+        tl.to("#s1-chunks", { textContent: 94, snap: { textContent: 1 }, duration: 2.7, ease: "none" }, 0.72)
+
+        window.__timelines["scene-parse"] = tl
+      </script>
+    </template>
+  </body>
+</html>

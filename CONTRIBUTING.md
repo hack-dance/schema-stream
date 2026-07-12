@@ -72,6 +72,19 @@ For local documentation work, `bun run docs:dev` prepares the canonical Markdown
 benchmark evidence, or documentation assets change. Browser examples must remain credential-free;
 live-provider examples read user-owned secrets only from the server or Codespaces environment.
 
+### Product demo media
+
+The editable HyperFrames composition for the README and documentation demo lives in
+`media/schema-stream-demo/`. Validate it without rendering before committing composition changes:
+
+```sh
+bun run demo:check
+```
+
+Run `bun run demo:render` to validate the composition and regenerate the canonical MP4, GIF, and
+poster under `docs/assets/`. The GIF is used by GitHub's README, while the documentation homepage
+uses the MP4 with the poster as its loading frame.
+
 ## Benchmarking
 
 Run the Bun and Node snapshot benchmark after changes to parser hot paths, snapshot materialization,

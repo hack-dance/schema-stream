@@ -35,6 +35,11 @@ const currentDirectoryPattern = /^\.$/
 const linkedImageLinePattern = /^\[!\[[^\]]*\]\([^)]+\)\]\([^)]+\)\r?\n/gm
 const canonicalDemoImageUrl =
   "https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif"
+export const stagedDemoAssetNames = [
+  "schema-stream-demo.gif",
+  "schema-stream-demo.mp4",
+  "schema-stream-demo-poster.jpg"
+] as const
 
 const preferredNavigationOrder: Readonly<Record<string, readonly string[]>> = {
   "": [
@@ -430,12 +435,16 @@ async function main(): Promise<void> {
   )
 
   const navigationFiles = await writeNavigation(documents)
-  const demoSource = join(canonicalDocsRoot, "assets/schema-stream-demo.gif")
-  const demoDestination = join(generatedAssetsRoot, "schema-stream-demo.gif")
-  await Bun.write(demoDestination, Bun.file(demoSource))
+  await Promise.all(
+    stagedDemoAssetNames.map(async assetName => {
+      const demoSource = join(canonicalDocsRoot, "assets", assetName)
+      const demoDestination = join(generatedAssetsRoot, assetName)
+      await Bun.write(demoDestination, Bun.file(demoSource))
+    })
+  )
 
   console.info(
-    `Documentation staging: ${documents.length} pages, ${navigationFiles} navigation files, and 1 generated asset`
+    `Documentation staging: ${documents.length} pages, ${navigationFiles} navigation files, and ${stagedDemoAssetNames.length} generated assets`
   )
 }
 

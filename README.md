@@ -22,7 +22,7 @@ Snapshots are progressive parser output, not validation results. `schema-stream`
 types and initial placeholders, but it does not validate partial or final values. Validate the
 settled value with your schema or use the producing SDK's validated result.
 
-![Terminal demo of schema-stream filling a typed object as JSON arrives](https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif)
+![Schema Stream progressing from raw JSON chunks to completion events, snapshot policies, and a materialized dashboard](https://raw.githubusercontent.com/hack-dance/schema-stream/main/docs/assets/schema-stream-demo.gif)
 
 ## One stream, many snapshots
 

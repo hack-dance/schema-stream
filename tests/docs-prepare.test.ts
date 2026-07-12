@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test"
 import { join, sep } from "node:path"
-import { collectCanonicalDocuments, rewriteStagedLinks } from "../scripts/docs/prepare"
+import {
+  collectCanonicalDocuments,
+  rewriteStagedLinks,
+  stagedDemoAssetNames
+} from "../scripts/docs/prepare"
 
 const repositoryRoot = join(import.meta.dir, "..")
 const source = join(repositoryRoot, "docs", "integrations", "link-probe.md")
@@ -57,5 +61,17 @@ describe("public documentation corpus", () => {
     expect(sources).not.toContain(join(repositoryRoot, "CONTRIBUTING.md"))
     expect(sources.some(path => path.startsWith(benchmarkRoot))).toBe(false)
     expect(sources).toContain(join(repositoryRoot, "README.md"))
+  })
+
+  test("stages the README loop and docs video from canonical media", async () => {
+    expect(stagedDemoAssetNames).toEqual([
+      "schema-stream-demo.gif",
+      "schema-stream-demo.mp4",
+      "schema-stream-demo-poster.jpg"
+    ])
+
+    for (const assetName of stagedDemoAssetNames) {
+      expect(Bun.file(join(repositoryRoot, "docs", "assets", assetName)).size).toBeGreaterThan(0)
+    }
   })
 })

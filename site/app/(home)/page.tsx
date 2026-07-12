@@ -1,5 +1,4 @@
 import { ArrowRightIcon, GitForkIcon, PackageIcon, PlayIcon } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import { CopyCommand } from "@/components/copy-command"
 import { ProgressiveExample } from "@/components/progressive-example"
@@ -150,15 +149,19 @@ export default function HomePage() {
               <PlayIcon aria-hidden="true" /> Open playground
             </Link>
           </div>
-          <Image
-            alt="SchemaStream progressively materializing a dashboard from JSON snapshots"
-            className="demo-image"
-            height={900}
-            priority={false}
-            src="/generated/schema-stream-demo.gif"
-            unoptimized
-            width={1600}
-          />
+          <video
+            aria-label="Schema Stream progressing from raw JSON chunks to completion events, snapshot policies, and a materialized dashboard"
+            autoPlay
+            className="demo-video"
+            controls
+            loop
+            muted
+            playsInline
+            poster="/generated/schema-stream-demo-poster.jpg"
+            preload="metadata"
+          >
+            <source src="/generated/schema-stream-demo.mp4" type="video/mp4" />
+          </video>
         </section>
       </main>
       <footer className="site-footer">

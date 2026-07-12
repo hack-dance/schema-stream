@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Geist";
+        font-style: normal;
+        font-weight: 100 900;
+        src: url("assets/Geist-Variable.woff2") format("woff2");
+      }
+
+      @font-face {
+        font-family: "Geist Mono";
+        font-style: normal;
+        font-weight: 100 900;
+        src: url("assets/GeistMono-Variable.woff2") format("woff2");
+      }
+
+      * {
+        box-sizing: border-box;
+        letter-spacing: 0;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        background: #f7f7f5;
+        height: 1080px;
+        overflow: hidden;
+        width: 1920px;
+      }
+
+      body {
+        color: #111111;
+        font-family: "Geist", sans-serif;
+      }
+
+      #root {
+        background: #f7f7f5;
+        height: 1080px;
+        overflow: hidden;
+        position: relative;
+        width: 1920px;
+      }
+
+      #end-veil {
+        background: #f7f7f5;
+        inset: 0;
+        opacity: 0;
+        position: absolute;
+        z-index: 20;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="16"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div
+        id="el-parse"
+        class="clip"
+        data-composition-id="scene-parse"
+        data-composition-src="compositions/scene-parse.html"
+        data-start="0"
+        data-duration="4.2"
+        data-track-index="1"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+
+      <div
+        id="el-events"
+        class="clip"
+        data-composition-id="scene-events"
+        data-composition-src="compositions/scene-events.html"
+        data-start="3.75"
+        data-duration="4.25"
+        data-track-index="2"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+
+      <div
+        id="el-policies"
+        class="clip"
+        data-composition-id="scene-policies"
+        data-composition-src="compositions/scene-policies.html"
+        data-start="7.55"
+        data-duration="4.25"
+        data-track-index="1"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+
+      <div
+        id="el-dashboard"
+        class="clip"
+        data-composition-id="scene-dashboard"
+        data-composition-src="compositions/scene-dashboard.html"
+        data-start="10.9"
+        data-duration="5.1"
+        data-track-index="2"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+
+      <div
+        id="end-veil"
+        class="clip"
+        data-start="15.6"
+        data-duration="0.4"
+        data-track-index="3"
+      ></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {}
+      const tl = gsap.timeline({ paused: true })
+
+      tl.fromTo(
+        "#el-parse",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.35, ease: "power2.out" },
+        0
+      )
+      tl.fromTo(
+        "#el-events",
+        { clipPath: "inset(0 0 0 100%)" },
+        { clipPath: "inset(0 0 0 0%)", duration: 0.45, ease: "expo.inOut" },
+        3.75
+      )
+      tl.fromTo(
+        "#el-policies",
+        { clipPath: "inset(100% 0 0 0)" },
+        { clipPath: "inset(0% 0 0 0)", duration: 0.34, ease: "power4.inOut" },
+        7.55
+      )
+      tl.fromTo(
+        "#el-dashboard",
+        { clipPath: "inset(50% 50% 50% 50%)" },
+        { clipPath: "inset(0% 0% 0% 0%)", duration: 0.32, ease: "expo.inOut" },
+        10.9
+      )
+      tl.fromTo(
+        "#end-veil",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power2.in" },
+        15.6
+      )
+
+      window.__timelines.main = tl
+    </script>
+  </body>
+</html>

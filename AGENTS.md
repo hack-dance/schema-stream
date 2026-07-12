@@ -87,5 +87,6 @@ Performance tests must be deterministic enough to detect major regressions witho
 - `src/`: library source and public entry points
 - `tests/`: unit, integration, benchmark, and packed-consumer verification
 - `docs/`: focused design and behavior documentation
+- `media/`: reproducible HyperFrames source for public product media
 - `.changeset/`: release notes and version intent
 - `.github/workflows/`: CI and release automation

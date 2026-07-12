@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "extends": ["ultracite/biome/core", "ultracite/biome/vitest"],
+  "files": {
+    // HyperFrames compositions use their framework-specific validator via `bun run demo:check`.
+    "includes": ["!media/schema-stream-demo"]
+  },
   "formatter": {
     "lineWidth": 100
   },

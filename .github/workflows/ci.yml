@@ -49,6 +49,9 @@ jobs:
       - name: Verify documentation sources
         run: bun run docs:check
 
+      - name: Verify product demo composition
+        run: bun run demo:check
+
       - name: Build package and documentation site
         run: bun run docs:build
 
