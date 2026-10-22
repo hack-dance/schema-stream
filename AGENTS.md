@@ -13,7 +13,7 @@ Schema Stream is a small, public, standalone TypeScript library for progressivel
 
 Use the versions declared by the repository:
 
-- `mise install` provisions Bun 1.3.14 and Node.js 24.
+- `mise install` provisions Bun 1.4.4 and Node.js 24.
 - `bun install` installs dependencies from `bun.lock`.
 - TypeScript 7 is the authoritative development compiler.
 - Published declarations must remain consumable by supported TypeScript 5.x projects; `bun run test:packed` verifies this with TypeScript 5.9.

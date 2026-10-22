@@ -12,7 +12,7 @@ mise install
 bun install
 ```
 
-The repository develops with Bun 1.3.14, Node.js 24, and TypeScript 7. Consumers do not need
+The repository develops with Bun 1.4.4, Node.js 24, and TypeScript 7. Consumers do not need
 TypeScript 7; the packed-package test verifies the published declarations with TypeScript 5.9.
 
 ## Development checks

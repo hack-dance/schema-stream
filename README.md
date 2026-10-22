@@ -333,7 +333,7 @@ bun run docs:build
 bun run check
 ```
 
-`mise.toml` pins Bun 1.3.14 and the current Node 24 release. Maintainers type-check and emit
+`mise.toml` pins Bun 1.4.4 and the current Node 24 release. Maintainers type-check and emit
 declarations with TypeScript 7.0.2. TypeScript is a development-only dependency, so installing
 `schema-stream` does not install or require TypeScript 7.
 

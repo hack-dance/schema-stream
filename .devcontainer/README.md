@@ -1,6 +1,6 @@
 # Schema Stream development container
 
-This container pins Node.js 24.18.0 and Bun 1.3.14, installs the lockfile with
+This container pins Node.js 24.18.0 and Bun 1.4.4, installs the lockfile with
 `bun install --frozen-lockfile`, and forwards the WebSocket example on port 3400. It works with
 GitHub Codespaces or a local editor that supports the Development Container specification.
 
