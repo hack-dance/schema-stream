@@ -250,9 +250,9 @@ Some pinned Mastra/provider combinations currently expose direct structured JSON
 `textStream` because the schema is forwarded as the model's response format. That behavior is not
 Mastra's public cross-provider contract. The repository's [executable Mastra compatibility
 example](./examples/mastra.ts) guards the stream before passing it to SchemaStream, and the weekly
-live test verifies `the installed @mastra/core version` with `openai/gpt-5.6-luna`. This optional lane provides
-SchemaStream's incomplete-string updates, completion events, and snapshot policies, while failing
-closed if an upstream version begins emitting prose.
+live test verifies the installed `@mastra/core` version with `openai/gpt-5.6-luna`. This optional
+lane provides SchemaStream's incomplete-string updates, completion events, and snapshot policies,
+while failing closed if an upstream version begins emitting prose.
 
 The repository runs credential-free runtime integrations against all three surfaces and provides
 an opt-in live-provider matrix for the OpenAI Agents SDK, Mastra, and Vercel AI SDK with varied
