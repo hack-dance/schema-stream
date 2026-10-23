@@ -38,8 +38,8 @@ npm init -y >/dev/null
 npm pkg set type=module >/dev/null
 npm install --ignore-scripts --no-audit --no-fund \
   "$TARBALL" \
-  @mastra/core@1.50.1 @openai/agents@0.13.1 ai@7.0.19 openai@6.46.0 \
-  zod@4.4.3 typescript@5.9.3 @types/node@24 >/dev/null
+  @mastra/core@1.79.0 @openai/agents@0.13.5 ai@7.0.148 openai@6.49.0 \
+  zod@4.6.7 typescript@5.9.3 @types/node@24 >/dev/null
 ./node_modules/.bin/tsc -p tsconfig.json
 node dist/consumer.js
 node consumer.cjs

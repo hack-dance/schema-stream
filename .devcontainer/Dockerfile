@@ -1,8 +1,8 @@
-FROM oven/bun:1.3.14 AS bun-runtime
+FROM oven/bun:1.4.4 AS bun-runtime
 
 FROM node:24.18.0-bookworm-slim
 
-ARG BUN_VERSION=1.3.14
+ARG BUN_VERSION=1.4.4
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
